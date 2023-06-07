@@ -1,0 +1,5 @@
+[alias]
+xtask = "run --package xtask --"
+
+[target.x86_64-unknown-uefi]
+rustflags = ["-Z", "pre-link-args=/SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER"]
