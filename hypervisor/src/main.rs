@@ -1,12 +1,16 @@
 #![no_main]
 #![no_std]
+#![feature(panic_info_message)]
 
 extern crate alloc;
 
-mod demo;
+mod allocator;
 mod hypervisor;
+mod logger;
 mod paging_structures;
+mod panic;
 mod switch_stack;
+mod system_table;
 mod vmx;
 mod x86_instructions;
 
@@ -18,17 +22,19 @@ use x86::{
     current::paging::{BASE_PAGE_SIZE, LARGE_PAGE_SIZE},
 };
 
-use crate::demo::test_hlat;
-use crate::switch_stack::virtualize_system;
+use crate::{
+    logger::init_uart_logger, switch_stack::virtualize_system, system_table::init_system_table,
+};
 
 const CPUID_VENDOR_AND_MAX_FUNCTIONS: u32 = 0x4000_0000;
 const HLAT_VENDOR_NAME: u32 = 0x54414c48; // "HLAT"
 
 #[entry]
-fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    uefi_services::init(&mut system_table).unwrap();
-    log::set_max_level(log::LevelFilter::Info);
-    info!("Starting hlat.efi");
+fn main(image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
+    // Initialize the logger and the system services.
+    init_uart_logger();
+    info!("rhv loaded🔥");
+    init_system_table(system_table, image_handle);
 
     if is_hlat_hypervisor_present() {
         error!("The HLAT hypervisor is already present");
@@ -48,11 +54,10 @@ fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     // Check if current execution is in the VM mode, and if so, done.
     if !is_hlat_hypervisor_present() {
         debug!("Virtualizing the system");
-        virtualize_system(system_table, &regs);
+        virtualize_system(&regs);
     }
     info!("The HLAT hypervisor has been installed successfully");
 
-    test_hlat();
     Status::SUCCESS
 }
 

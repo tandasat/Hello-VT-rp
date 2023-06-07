@@ -25,8 +25,8 @@ derivative = { version ="2.2", features = ["use_core"]}
 log = "0.4"
 num-derive = { version= "0.3", default-features= false }
 num-traits = { version= "0.2", default-features= false }
+spin = "0.9"
 uefi = { version = "0.20", features = ["alloc"] }
-uefi-services = "0.17"
 x86 = "0.52"
 
 [features]

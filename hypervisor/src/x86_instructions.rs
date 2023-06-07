@@ -119,6 +119,26 @@ pub(crate) fn load_tr(sel: SegmentSelector) {
     unsafe { x86::task::load_tr(sel) };
 }
 
-pub(crate) fn invlpg(addr: usize) {
-    unsafe { x86::tlb::flush(addr) };
+/// Disables maskable interrupts.
+pub(crate) fn cli() {
+    // Safety: this project runs at CPL0.
+    unsafe { x86::irq::disable() };
+}
+
+/// Halts execution of the processor.
+pub(crate) fn hlt() {
+    // Safety: this project runs at CPL0.
+    unsafe { x86::halt() };
+}
+
+/// Reads 8-bits from an IO port.
+pub(crate) fn inb(port: u16) -> u8 {
+    // Safety: this project runs at CPL0.
+    unsafe { x86::io::inb(port) }
+}
+
+/// Writes 8-bits to an IO port.
+pub(crate) fn outb(port: u16, val: u8) {
+    // Safety: this project runs at CPL0.
+    unsafe { x86::io::outb(port, val) };
 }
