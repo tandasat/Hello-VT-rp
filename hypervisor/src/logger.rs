@@ -68,18 +68,11 @@ impl log::Log for UartLogger {
 
     fn log(&self, record: &log::Record<'_>) {
         if self.enabled(record.metadata()) {
-            let _ = writeln!(self.lock(), "#{}:{}: {}", apic_id(), record.level(), record.args());
+            let _ = writeln!(self.lock(), "{}: {}", record.level(), record.args());
         }
     }
 
     fn flush(&self) {}
-}
-
-/// Gets an APIC ID.
-fn apic_id() -> u32 {
-    // See: (AMD) CPUID Fn0000_0001_EBX LocalApicId, LogicalProcessorCount, CLFlush
-    // See: (Intel) Table 3-8. Information Returned by CPUID Instruction
-    x86::cpuid::cpuid!(0x1).ebx >> 24
 }
 
 static UART_LOGGER: UartLogger = UartLogger::new(UartComPort::Com1);

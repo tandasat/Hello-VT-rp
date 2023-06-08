@@ -56,8 +56,8 @@ fn main(image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
         debug!("Virtualizing the system");
         virtualize_system(&regs);
     }
+    is_hlat_hypervisor_present();
     info!("The HLAT hypervisor has been installed successfully");
-
     Status::SUCCESS
 }
 

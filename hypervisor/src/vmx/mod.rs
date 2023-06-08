@@ -1,6 +1,5 @@
 pub(crate) mod descriptors;
 pub(crate) mod epts;
-pub(crate) mod hlat;
 pub(crate) mod mtrr;
 
 use alloc::{
@@ -9,7 +8,7 @@ use alloc::{
     format,
     string::{String, ToString},
 };
-use core::{alloc::Layout, arch::global_asm, ops::Range};
+use core::{alloc::Layout, arch::global_asm};
 use log::trace;
 use x86::{
     controlregs::{Cr0, Cr4},
@@ -20,7 +19,6 @@ use x86::{
 };
 
 use crate::{
-    vmx::hlat::initialize_hlat_table,
     x86_instructions::{
         cr0, cr0_write, cr3, cr4, cr4_write, lar, lgdt, load_tr, lsl, rdmsr, sgdt, sidt, tr, wrmsr,
     },
@@ -30,7 +28,6 @@ use crate::{
 use self::{
     descriptors::Descriptors,
     epts::{initialize_epts, Epts},
-    hlat::HlatTables,
 };
 
 pub(crate) struct Vmx {
@@ -148,16 +145,11 @@ pub(crate) enum VmExitReason {
     Cpuid,
     Rdmsr,
     Wrmsr,
-    MonitorTrapFlag,
-    EptViolation,
 }
 
 pub(crate) struct Vm {
     pub(crate) regs: GuestRegisters,
     pub(crate) epts: Box<Epts>,
-    pub(crate) hlat: Box<HlatTables>,
-    pub(crate) protected_gpa: Range<u64>,
-    pub(crate) protected_la: Range<u64>,
     launched: bool,
     descriptors: Descriptors,
     vmcs: Box<Vmcs>,
@@ -171,12 +163,6 @@ impl Vm {
             handle_alloc_error(layout);
         }
 
-        let layout = Layout::new::<HlatTables>();
-        let hlat = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<HlatTables>();
-        if hlat.is_null() {
-            handle_alloc_error(layout);
-        }
-
         let mut vmcs = Box::<Vmcs>::default();
         vmcs.revision_id = rdmsr(x86::msr::IA32_VMX_BASIC) as u32;
         trace!("{vmcs:#x?}");
@@ -184,9 +170,6 @@ impl Vm {
         Self {
             regs: GuestRegisters::default(),
             epts: unsafe { Box::from_raw(epts) },
-            hlat: unsafe { Box::from_raw(hlat) },
-            protected_gpa: Range::<u64>::default(),
-            protected_la: Range::<u64>::default(),
             launched: false,
             descriptors: Descriptors::new_from_current(),
             vmcs,
@@ -279,13 +262,12 @@ impl Vm {
             Self::adjust_vmx_control(VmxControl::PinBased, 0),
         );
 
-        let mut exec_control1 = IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG;
-        if cfg!(feature = "enable_vt_rp") {
-            exec_control1 |= IA32_VMX_PROCBASED_CTLS_ACTIVATE_TERTIARY_CONTROLS_FLAG;
-        }
         vmwrite(
             vmcs::control::PRIMARY_PROCBASED_EXEC_CONTROLS,
-            Self::adjust_vmx_control(VmxControl::ProcessorBased, exec_control1),
+            Self::adjust_vmx_control(
+                VmxControl::ProcessorBased,
+                IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG,
+            ),
         );
         vmwrite(
             vmcs::control::SECONDARY_PROCBASED_EXEC_CONTROLS,
@@ -301,31 +283,12 @@ impl Vm {
             vmcs::control::EPTP_FULL,
             Self::eptp_from_nested_cr3(self.epts.as_ref() as *const _ as u64),
         );
-
-        // Enable HLAT.
-        if cfg!(feature = "enable_vt_rp") {
-            initialize_hlat_table(self.hlat.as_mut());
-
-            vmwrite(
-                VMCS_CTRL_TERTIARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
-                Self::adjust_vmx_control(
-                    VmxControl::ProcessorBased3,
-                    IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG
-                        | IA32_VMX_PROCBASED_CTLS3_EPT_PAGING_WRITE_CONTROL_FLAG
-                        | IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG,
-                ),
-            );
-            vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
-            // Leave "HLAT prefix size" to zero
-        }
     }
 
     pub(crate) fn run(&mut self) -> VmExitReason {
         const VMX_EXIT_REASON_CPUID: u16 = 10;
         const VMX_EXIT_REASON_RDMSR: u16 = 31;
         const VMX_EXIT_REASON_WRMSR: u16 = 32;
-        const VMX_EXIT_REASON_MTF: u16 = 37;
-        const VMX_EXIT_REASON_EPT_VIOLATION: u16 = 48;
 
         vmwrite(vmcs::guest::RIP, self.regs.rip);
         vmwrite(vmcs::guest::RSP, self.regs.rsp);
@@ -348,8 +311,6 @@ impl Vm {
             VMX_EXIT_REASON_CPUID => VmExitReason::Cpuid,
             VMX_EXIT_REASON_RDMSR => VmExitReason::Rdmsr,
             VMX_EXIT_REASON_WRMSR => VmExitReason::Wrmsr,
-            VMX_EXIT_REASON_MTF => VmExitReason::MonitorTrapFlag,
-            VMX_EXIT_REASON_EPT_VIOLATION => VmExitReason::EptViolation,
             _ => panic!("Unhandled VM-exit reason: {:?}", vmread(vmcs::ro::EXIT_REASON)),
         }
     }
@@ -380,17 +341,6 @@ impl Vm {
             // There is no TRUE MSR for IA32_VMX_PROCBASED_CTLS2. Just use
             // IA32_VMX_PROCBASED_CTLS2 unconditionally.
             (VmxControl::ProcessorBased2, _) => x86::msr::IA32_VMX_PROCBASED_CTLS2,
-            (VmxControl::ProcessorBased3, _) => {
-                const IA32_VMX_PROCBASED_CTLS3: u32 = 0x492;
-
-                let allowed1 = rdmsr(IA32_VMX_PROCBASED_CTLS3);
-                let effective_value = requested_value & allowed1;
-                assert!(
-                    effective_value | requested_value == effective_value,
-                    "One or more requested features are not supported: {effective_value:#x?} : {requested_value:#x?} "
-                );
-                return effective_value;
-            }
         };
 
         // Each bit of the following VMCS values might have to be set or cleared
@@ -547,7 +497,6 @@ pub(crate) enum VmxControl {
     PinBased,
     ProcessorBased,
     ProcessorBased2,
-    ProcessorBased3,
     VmExit,
     VmEntry,
 }
@@ -559,26 +508,14 @@ extern "efiapi" {
 global_asm!(include_str!("run_vmx_vm.nasm"));
 
 // See: Table 25-6. Definitions of Primary Processor-Based VM-Execution Controls
-pub(crate) const IA32_VMX_PROCBASED_CTLS_ACTIVATE_TERTIARY_CONTROLS_FLAG: u64 = 1 << 17;
-pub(crate) const IA32_VMX_PROCBASED_CTLS_MONITOR_TRAP_FLAG_FLAG: u64 = 1 << 27;
 pub(crate) const IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG: u64 = 1 << 31;
 
 // See: Table 25-7. Definitions of Secondary Processor-Based VM-Execution
 // Controls
 pub(crate) const IA32_VMX_PROCBASED_CTLS2_ENABLE_EPT_FLAG: u64 = 1 << 1;
 
-// See: Table 25-8. Definitions of Tertiary Processor-Based VM-Execution
-// Controls
-pub(crate) const IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG: u64 = 1 << 1;
-pub(crate) const IA32_VMX_PROCBASED_CTLS3_EPT_PAGING_WRITE_CONTROL_FLAG: u64 = 1 << 2;
-pub(crate) const IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG: u64 = 1 << 3;
-
 // See: Table 25-13. Definitions of Primary VM-Exit Controls
 pub(crate) const IA32_VMX_EXIT_CTLS_HOST_ADDRESS_SPACE_SIZE_FLAG: u64 = 1 << 9;
 
 // See: Table 25-15. Definitions of VM-Entry Controls
 pub(crate) const IA32_VMX_ENTRY_CTLS_IA32E_MODE_GUEST_FLAG: u64 = 1 << 9;
-
-// See: APPENDIX B FIELD ENCODING IN VMCS
-pub(crate) const VMCS_CTRL_TERTIARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS: u32 = 0x2034;
-pub(crate) const VMCS_CTRL_HLAT_POINTER: u32 = 0x2040;

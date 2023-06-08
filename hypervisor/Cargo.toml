@@ -28,37 +28,3 @@ num-traits = { version= "0.2", default-features= false }
 spin = "0.9"
 uefi = { version = "0.20", features = ["alloc"] }
 x86 = "0.52"
-
-[features]
-default = ["enable_vt_rp", "remap", "protect_translation"]
-
-#
-enable_vt_rp = []
-
-# Demos options:
-# demo_hlat1 - Modification succeeds.
-# demo_hlat2 - Modification fails because a GPA is mapped as RO.
-# demo_hlat3 - Modification succeeds because another GPA is used due to remapping.
-# demo_hlat4 - Modification fails because remapping has no effect thanks to HLAT.
-# demo_vpw1 - Modification and access from an aliased LA succeeds.
-# demo_vpw2 - Modification fails because access from an aliased LA is detected by VPW.
-demo_hlat1 = ["hook"]
-demo_hlat2 = ["hook", "protect_gpa"]
-demo_hlat3 = ["hook", "protect_gpa", "remap"]
-demo_hlat4 = ["hook", "protect_gpa", "remap", "protect_translation"]
-demo_vpw1 = ["hook", "alias"]
-demo_vpw2 = ["hook", "alias", "verify_translation"]
-
-# Test purpose configuration.
-test_all_attack = ["hook", "remap", "alias"]
-test_all_protection = ["protect_gpa", "protect_translation", "verify_translation"]
-
-# Attacks.
-hook = []
-remap = []
-alias = []
-
-# Protections.
-protect_gpa = []
-protect_translation = []
-verify_translation = []
