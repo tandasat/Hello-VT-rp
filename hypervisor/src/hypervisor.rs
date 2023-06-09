@@ -44,6 +44,11 @@ fn handle_cpuid(vm: &mut Vm) {
         regs.ebx = HLAT_VENDOR_NAME;
         regs.ecx = HLAT_VENDOR_NAME;
         regs.edx = HLAT_VENDOR_NAME;
+    } else if leaf == 1 {
+        // CPUID.1.ECX[5] indicates if VT-x is supported. Clear this on this
+        // processor to prevent other hypervisor tries to use it.
+        // See: Table 3-10. Feature Information Returned in the ECX Register
+        regs.ecx &= !(1 << 5)
     }
 
     vm.regs.rax = regs.eax as u64;
