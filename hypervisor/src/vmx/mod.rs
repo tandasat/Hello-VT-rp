@@ -7,6 +7,7 @@ use alloc::{
     boxed::Box,
     format,
     string::{String, ToString},
+    vec::Vec,
 };
 use core::{alloc::Layout, arch::global_asm};
 use log::trace;
@@ -19,6 +20,7 @@ use x86::{
 };
 
 use crate::{
+    paging_structures::{initialize_paging_structures, PagingStructures},
     x86_instructions::{
         cr0, cr0_write, cr3, cr4, cr4_write, lar, lgdt, load_tr, lsl, rdmsr, sgdt, sidt, tr, wrmsr,
     },
@@ -148,6 +150,9 @@ pub(crate) enum VmExitReason {
 }
 
 pub(crate) struct Vm {
+    paging_structures: Box<PagingStructures>,
+    _idt: Vec<u64>, // TODO: may be static array
+    _idtr: DescriptorTablePointer<u64>,
     pub(crate) regs: GuestRegisters,
     pub(crate) epts: Box<Epts>,
     launched: bool,
@@ -163,11 +168,22 @@ impl Vm {
             handle_alloc_error(layout);
         }
 
+        let layout: Layout = Layout::new::<PagingStructures>();
+        let ps = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<PagingStructures>();
+        if ps.is_null() {
+            handle_alloc_error(layout);
+        }
+        let mut paging_structures = unsafe { Box::from_raw(ps) };
+        initialize_paging_structures(paging_structures.as_mut());
+
         let mut vmcs = Box::<Vmcs>::default();
         vmcs.revision_id = rdmsr(x86::msr::IA32_VMX_BASIC) as u32;
         trace!("{vmcs:#x?}");
 
         Self {
+            paging_structures,
+            _idt: Vec::new(),
+            _idtr: DescriptorTablePointer::<u64>::default(),
             regs: GuestRegisters::default(),
             epts: unsafe { Box::from_raw(epts) },
             launched: false,
@@ -238,7 +254,7 @@ impl Vm {
         vmwrite(vmcs::host::CS_SELECTOR, cs().bits());
         vmwrite(vmcs::host::TR_SELECTOR, tr().bits());
         vmwrite(vmcs::host::CR0, cr0().bits() as u64);
-        vmwrite(vmcs::host::CR3, cr3());
+        vmwrite(vmcs::host::CR3, self.paging_structures.as_ref() as *const _ as u64);
         vmwrite(vmcs::host::CR4, cr4().bits() as u64);
         vmwrite(vmcs::host::TR_BASE, Self::segment_base(tr()));
         vmwrite(vmcs::host::GDTR_BASE, gdtr.base as u64);

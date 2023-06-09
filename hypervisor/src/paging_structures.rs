@@ -1,90 +1,59 @@
-// TODO: consider using x86's paging structures
-
 use bitfield::bitfield;
+use core::ptr::addr_of;
+use x86::{bits32::paging::BASE_PAGE_SHIFT, current::paging::LARGE_PAGE_SIZE};
 
-#[derive(Debug, Clone, Copy)]
 #[repr(C, align(4096))]
-pub(crate) struct Pml4 {
-    pub(crate) entries: [Pml4e; 512],
+pub(crate) struct PagingStructures {
+    pml4: Pml4,
+    pdpt: Pdpt,
+    pd: [Pd; 512],
+}
+
+pub(crate) fn initialize_paging_structures(paging_structures: &mut PagingStructures) {
+    let pml4 = &mut paging_structures.pml4;
+    pml4.0.entries[0].set_present(true);
+    pml4.0.entries[0].set_writable(true);
+    pml4.0.entries[0].set_pfn(addr_of!(paging_structures.pdpt) as u64 >> BASE_PAGE_SHIFT);
+
+    let mut pa = 0;
+    for (i, pdpte) in paging_structures.pdpt.0.entries.iter_mut().enumerate() {
+        pdpte.set_present(true);
+        pdpte.set_writable(true);
+        pdpte.set_pfn(addr_of!(paging_structures.pd[i]) as u64 >> BASE_PAGE_SHIFT);
+        for pde in &mut paging_structures.pd[i].0.entries {
+            pde.set_present(true);
+            pde.set_writable(true);
+            pde.set_large(true);
+            pde.set_pfn(pa >> BASE_PAGE_SHIFT);
+            pa += LARGE_PAGE_SIZE as u64;
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
-#[repr(C, align(4096))]
-pub(crate) struct Pdpt {
-    pub(crate) entries: [Pdpte; 512],
-}
+struct Pml4(Table);
+
+#[derive(Debug, Clone, Copy)]
+struct Pdpt(Table);
+
+#[derive(Debug, Clone, Copy)]
+struct Pd(Table);
+
+#[derive(Debug, Clone, Copy)]
+struct Pt(Table);
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, align(4096))]
-pub(crate) struct Pd2Mb {
-    pub(crate) entries: [Pde2Mb; 512],
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(C, align(4096))]
-pub(crate) struct Pd {
-    pub(crate) entries: [Pde; 512],
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(C, align(4096))]
-pub(crate) struct Pt {
-    pub(crate) entries: [Pte; 512],
+struct Table {
+    entries: [Entry; 512],
 }
 
 bitfield! {
-    /// Table 4-15. Format of a PML4 Entry (PML4E) that References a Page-Directory-Pointer Table
     #[derive(Clone, Copy)]
-    pub struct Pml4e(u64);
-    impl Debug;
-    pub present, set_present: 0;
-    pub writable, _: 1;
-    pub restart, set_restart: 11;
-    pub pfn, set_pfn: 51, 12;
-}
-
-bitfield! {
-    /// Table 4-17. Format of a Page-Directory-Pointer-Table Entry (PDPTE) that References a Page Directory
-    #[derive(Clone, Copy)]
-    pub struct Pdpte(u64);
-    impl Debug;
-    pub present, set_present: 0;
-    pub writable, _: 1;
-    pub restart, set_restart: 11;
-    pub pfn, set_pfn: 51, 12;
-}
-
-bitfield! {
-    /// Table 4-18. Format of a Page-Directory Entry that Maps a 2-MByte Page
-    #[derive(Clone, Copy)]
-    pub struct Pde2Mb(u64);
+    pub struct Entry(u64);
     impl Debug;
     pub present, set_present: 0;
     pub writable, set_writable: 1;
-    pub large, _: 7;
-    pub restart, set_restart: 11;
-    pub pfn, set_pfn: 51, 21;
-}
-
-bitfield! {
-    /// Table 4-19. Format of a Page-Directory Entry that References a Page Table
-    #[derive(Clone, Copy)]
-    pub struct Pde(u64);
-    impl Debug;
-    pub present, set_present: 0;
-    pub writable, set_writable: 1;
-    pub large, _: 7;
-    pub restart, set_restart: 11;
-    pub pfn, set_pfn: 51, 12;
-}
-
-bitfield! {
-    /// Table 4-20. Format of a Page-Table Entry that Maps a 4-KByte Page
-    #[derive(Clone, Copy)]
-    pub struct Pte(u64);
-    impl Debug;
-    pub present, set_present: 0;
-    pub writable, set_writable: 1;
-    pub restart, set_restart: 11;
+    pub large, set_large: 7;
     pub pfn, set_pfn: 51, 12;
 }
