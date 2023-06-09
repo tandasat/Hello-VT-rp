@@ -147,6 +147,7 @@ pub(crate) enum VmExitReason {
     Cpuid,
     Rdmsr,
     Wrmsr,
+    XSetBv,
 }
 
 pub(crate) struct Vm {
@@ -305,6 +306,7 @@ impl Vm {
         const VMX_EXIT_REASON_CPUID: u16 = 10;
         const VMX_EXIT_REASON_RDMSR: u16 = 31;
         const VMX_EXIT_REASON_WRMSR: u16 = 32;
+        const VMX_EXIT_REASON_XSETBV: u16 = 55;
 
         vmwrite(vmcs::guest::RIP, self.regs.rip);
         vmwrite(vmcs::guest::RSP, self.regs.rsp);
@@ -327,6 +329,7 @@ impl Vm {
             VMX_EXIT_REASON_CPUID => VmExitReason::Cpuid,
             VMX_EXIT_REASON_RDMSR => VmExitReason::Rdmsr,
             VMX_EXIT_REASON_WRMSR => VmExitReason::Wrmsr,
+            VMX_EXIT_REASON_XSETBV => VmExitReason::XSetBv,
             _ => panic!("Unhandled VM-exit reason: {:?}", vmread(vmcs::ro::EXIT_REASON)),
         }
     }

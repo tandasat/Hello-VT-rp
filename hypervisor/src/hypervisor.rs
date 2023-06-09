@@ -1,9 +1,13 @@
 use log::{debug, info, trace};
-use x86::{cpuid::cpuid, vmx::vmcs};
+use x86::{
+    controlregs::{Cr4, Xcr0},
+    cpuid::cpuid,
+    vmx::vmcs,
+};
 
 use crate::{
     vmx::{vmread, Vm, VmExitReason, Vmx},
-    x86_instructions::{rdmsr, wrmsr},
+    x86_instructions::{cr4, cr4_write, rdmsr, wrmsr, xsetbv},
     GuestRegisters, CPUID_VENDOR_AND_MAX_FUNCTIONS, HLAT_VENDOR_NAME,
 };
 
@@ -24,6 +28,7 @@ pub(crate) fn start_hypervisor(regs: &GuestRegisters) -> ! {
             VmExitReason::Cpuid => handle_cpuid(vm),
             VmExitReason::Rdmsr => handle_rdmsr(vm),
             VmExitReason::Wrmsr => handle_wrmsr(vm),
+            VmExitReason::XSetBv => handle_xsetbv(vm),
         }
     }
 }
@@ -63,6 +68,18 @@ fn handle_wrmsr(vm: &mut Vm) {
     let value = (vm.regs.rax & 0xffff_ffff) | ((vm.regs.rdx & 0xffff_ffff) << 32);
     info!("WRMSR {msr:#x?} {value:#x?}");
     wrmsr(msr, value);
+
+    vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
+}
+
+fn handle_xsetbv(vm: &mut Vm) {
+    let xcr: u32 = vm.regs.rcx as u32;
+    let value = (vm.regs.rax & 0xffff_ffff) | ((vm.regs.rdx & 0xffff_ffff) << 32);
+    let value = Xcr0::from_bits(value).unwrap();
+    info!("XSETBV {xcr:#x?} {value:#x?}");
+
+    cr4_write(cr4() | Cr4::CR4_ENABLE_OS_XSAVE);
+    xsetbv(xcr, value);
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }

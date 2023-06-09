@@ -7,7 +7,7 @@
 
 use core::arch::asm;
 use x86::{
-    controlregs::{Cr0, Cr4},
+    controlregs::{Cr0, Cr4, Xcr0},
     current::rflags::RFlags,
     dtables::DescriptorTablePointer,
     segmentation::SegmentSelector,
@@ -141,4 +141,9 @@ pub(crate) fn inb(port: u16) -> u8 {
 pub(crate) fn outb(port: u16, val: u8) {
     // Safety: this project runs at CPL0.
     unsafe { x86::io::outb(port, val) };
+}
+
+pub(crate) fn xsetbv(xcr: u32, val: Xcr0) {
+    assert!(xcr == 0);
+    unsafe { x86::controlregs::xcr0_write(val) };
 }
