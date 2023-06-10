@@ -73,7 +73,7 @@ impl TestVm for Vmware {
 
         // If the serial output file exists, delete it to avoid a popup
         let log_file = if cfg!(target_os = "windows") {
-            r"\\wsl$\Ubuntu\tmp\serial.log"
+            r"\\wsl$\Ubuntu-22.04\tmp\serial.log"
         } else {
             "/tmp/serial.log"
         };
@@ -161,7 +161,7 @@ mod tests {
             assert_eq!(windows_path(r"C:\"), r"C:\");
             assert_eq!(windows_path("/mnt/c/tmp"), "/mnt/c/tmp");
         } else {
-            assert_eq!(windows_path("/tmp"), r"\\wsl.localhost\Ubuntu\tmp");
+            assert_eq!(windows_path("/tmp"), r"\\wsl.localhost\Ubuntu-22.04\tmp");
         }
     }
 }
