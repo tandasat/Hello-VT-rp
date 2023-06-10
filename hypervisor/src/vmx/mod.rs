@@ -24,13 +24,32 @@ use crate::{
     x86_instructions::{
         cr0, cr0_write, cr3, cr4, cr4_write, lar, lgdt, load_tr, lsl, rdmsr, sgdt, sidt, tr, wrmsr,
     },
-    GuestRegisters,
+    GuestRegisters, Page,
 };
 
 use self::{
     descriptors::Descriptors,
     epts::{initialize_epts, Epts},
 };
+
+struct Boxed<T> {
+    boxed: Box<T>,
+}
+impl<T> Default for Boxed<T> {
+    fn default() -> Self {
+        let layout = Layout::new::<T>();
+        let ptr = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<T>();
+        if ptr.is_null() {
+            handle_alloc_error(layout);
+        }
+        Self {
+            boxed: unsafe { Box::from_raw(ptr) },
+        }
+    }
+}
+
+#[derive(Default)]
+struct MsrBitmaps(Boxed<Page>);
 
 pub(crate) struct Vmx {
     vmxon_region: Vmxon,
@@ -159,6 +178,7 @@ pub(crate) struct Vm {
     launched: bool,
     descriptors: Descriptors,
     vmcs: Box<Vmcs>,
+    msr_bitmaps: MsrBitmaps,
 }
 
 impl Vm {
@@ -190,6 +210,7 @@ impl Vm {
             launched: false,
             descriptors: Descriptors::new_from_current(),
             vmcs,
+            msr_bitmaps: MsrBitmaps::default(),
         }
     }
 
@@ -283,7 +304,8 @@ impl Vm {
             vmcs::control::PRIMARY_PROCBASED_EXEC_CONTROLS,
             Self::adjust_vmx_control(
                 VmxControl::ProcessorBased,
-                IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG,
+                IA32_VMX_PROCBASED_CTLS_USE_MSR_BITMAPS_FLAG
+                    | IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG,
             ),
         );
         vmwrite(
@@ -292,6 +314,11 @@ impl Vm {
                 VmxControl::ProcessorBased2,
                 IA32_VMX_PROCBASED_CTLS2_ENABLE_EPT_FLAG,
             ),
+        );
+
+        vmwrite(
+            vmcs::control::MSR_BITMAPS_ADDR_FULL,
+            self.msr_bitmaps.0.boxed.as_ref() as *const _ as u64,
         );
 
         // Enable EPT.
@@ -527,6 +554,7 @@ extern "efiapi" {
 global_asm!(include_str!("run_vmx_vm.nasm"));
 
 // See: Table 25-6. Definitions of Primary Processor-Based VM-Execution Controls
+pub(crate) const IA32_VMX_PROCBASED_CTLS_USE_MSR_BITMAPS_FLAG: u64 = 1 << 28;
 pub(crate) const IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG: u64 = 1 << 31;
 
 // See: Table 25-7. Definitions of Secondary Processor-Based VM-Execution
