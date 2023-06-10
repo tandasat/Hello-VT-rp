@@ -18,6 +18,18 @@ pub(crate) fn virtualize_system(regs: &GuestRegisters) -> ! {
     let image_range = image_base..image_base + image_size as usize;
     debug!("Image range: {image_range:#x?}");
 
+    // Prevent relocation by zapping the Relocation Table in the PE header. UEFI
+    // keeps the list of runtime drivers and apply patches into their code and
+    // data according with relocation information as address translation switches
+    // from physical-mode to virtual-mode when the OS starts. This causes a problem
+    // with us because we (the host part) keeps running under physical-mode (as
+    // we have our own page tables). Relocation ends up breaking the host code,
+    // and that has to be prevented. Dirty and easiest way is to nullify the table.
+    unsafe {
+        *((image_base + 0x128) as *mut u32) = 0;
+        *((image_base + 0x12c) as *mut u32) = 0;
+    }
+
     // Allocate separate stack space. This is never freed.
     let layout = Layout::array::<Page>(0x10).unwrap();
     let stack = unsafe { alloc::alloc::alloc_zeroed(layout) };

@@ -312,7 +312,10 @@ impl Vm {
             vmcs::control::SECONDARY_PROCBASED_EXEC_CONTROLS,
             Self::adjust_vmx_control(
                 VmxControl::ProcessorBased2,
-                IA32_VMX_PROCBASED_CTLS2_ENABLE_EPT_FLAG,
+                IA32_VMX_PROCBASED_CTLS2_ENABLE_EPT_FLAG
+                    | IA32_VMX_PROCBASED_CTLS2_ENABLE_RDTSCP_FLAG
+                    | IA32_VMX_PROCBASED_CTLS2_ENABLE_INVPCID_FLAG
+                    | IA32_VMX_PROCBASED_CTLS2_ENABLE_XSAVES_FLAG,
             ),
         );
 
@@ -560,6 +563,9 @@ pub(crate) const IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG: u64 =
 // See: Table 25-7. Definitions of Secondary Processor-Based VM-Execution
 // Controls
 pub(crate) const IA32_VMX_PROCBASED_CTLS2_ENABLE_EPT_FLAG: u64 = 1 << 1;
+pub(crate) const IA32_VMX_PROCBASED_CTLS2_ENABLE_RDTSCP_FLAG: u64 = 1 << 3;
+pub(crate) const IA32_VMX_PROCBASED_CTLS2_ENABLE_INVPCID_FLAG: u64 = 1 << 12;
+pub(crate) const IA32_VMX_PROCBASED_CTLS2_ENABLE_XSAVES_FLAG: u64 = 1 << 20;
 
 // See: Table 25-13. Definitions of Primary VM-Exit Controls
 pub(crate) const IA32_VMX_EXIT_CTLS_HOST_ADDRESS_SPACE_SIZE_FLAG: u64 = 1 << 9;
