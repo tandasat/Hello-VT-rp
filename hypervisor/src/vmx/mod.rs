@@ -7,7 +7,6 @@ use alloc::{
     boxed::Box,
     format,
     string::{String, ToString},
-    vec::Vec,
 };
 use core::{alloc::Layout, arch::global_asm};
 use log::trace;
@@ -31,25 +30,6 @@ use self::{
     descriptors::Descriptors,
     epts::{initialize_epts, Epts},
 };
-
-struct Boxed<T> {
-    boxed: Box<T>,
-}
-impl<T> Default for Boxed<T> {
-    fn default() -> Self {
-        let layout = Layout::new::<T>();
-        let ptr = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<T>();
-        if ptr.is_null() {
-            handle_alloc_error(layout);
-        }
-        Self {
-            boxed: unsafe { Box::from_raw(ptr) },
-        }
-    }
-}
-
-#[derive(Default)]
-struct MsrBitmaps(Boxed<Page>);
 
 pub(crate) struct Vmx {
     vmxon_region: Vmxon,
@@ -171,30 +151,17 @@ pub(crate) enum VmExitReason {
 
 pub(crate) struct Vm {
     paging_structures: Box<PagingStructures>,
-    _idt: Vec<u64>, // TODO: may be static array
-    _idtr: DescriptorTablePointer<u64>,
     pub(crate) regs: GuestRegisters,
     pub(crate) epts: Box<Epts>,
     launched: bool,
     descriptors: Descriptors,
     vmcs: Box<Vmcs>,
-    msr_bitmaps: MsrBitmaps,
+    msr_bitmaps: Box<Page>,
 }
 
 impl Vm {
     pub(crate) fn new() -> Self {
-        let layout = Layout::new::<Epts>();
-        let epts = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<Epts>();
-        if epts.is_null() {
-            handle_alloc_error(layout);
-        }
-
-        let layout: Layout = Layout::new::<PagingStructures>();
-        let ps = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<PagingStructures>();
-        if ps.is_null() {
-            handle_alloc_error(layout);
-        }
-        let mut paging_structures = unsafe { Box::from_raw(ps) };
+        let mut paging_structures = unsafe { box_zeroed::<PagingStructures>() };
         initialize_paging_structures(paging_structures.as_mut());
 
         let mut vmcs = Box::<Vmcs>::default();
@@ -203,14 +170,12 @@ impl Vm {
 
         Self {
             paging_structures,
-            _idt: Vec::new(),
-            _idtr: DescriptorTablePointer::<u64>::default(),
             regs: GuestRegisters::default(),
-            epts: unsafe { Box::from_raw(epts) },
+            epts: unsafe { box_zeroed::<Epts>() },
             launched: false,
             descriptors: Descriptors::new_from_current(),
             vmcs,
-            msr_bitmaps: MsrBitmaps::default(),
+            msr_bitmaps: unsafe { box_zeroed::<Page>() },
         }
     }
 
@@ -319,10 +284,7 @@ impl Vm {
             ),
         );
 
-        vmwrite(
-            vmcs::control::MSR_BITMAPS_ADDR_FULL,
-            self.msr_bitmaps.0.boxed.as_ref() as *const _ as u64,
-        );
+        vmwrite(vmcs::control::MSR_BITMAPS_ADDR_FULL, self.msr_bitmaps.as_ref() as *const _ as u64);
 
         // Enable EPT.
         initialize_epts(self.epts.as_mut());
@@ -539,6 +501,15 @@ pub(crate) fn vm_succeed(flags: RFlags) -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+unsafe fn box_zeroed<T>() -> Box<T> {
+    let layout = Layout::new::<T>();
+    let ptr = unsafe { alloc::alloc::alloc_zeroed(layout) }.cast::<T>();
+    if ptr.is_null() {
+        handle_alloc_error(layout);
+    }
+    unsafe { Box::from_raw(ptr) }
 }
 
 #[derive(Clone, Copy)]

@@ -36,7 +36,7 @@ pub(crate) fn virtualize_system(regs: &GuestRegisters) -> ! {
     if stack.is_null() {
         handle_alloc_error(layout);
     }
-    let stack_base = stack as u64 + 0x10000 - 0x10;
+    let stack_base = stack as u64 + layout.size() as u64 - 0x10;
     debug!("Stack range: {:#x?}", (stack_base..stack as u64));
 
     // Jump into the "start_hypervisor" function with the new stack pointer.
