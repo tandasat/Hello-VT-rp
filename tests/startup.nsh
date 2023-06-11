@@ -8,5 +8,4 @@ fs1:
 # Run hlat.efi.
 time
 load hlat.efi
-load hlat.efi
 time
