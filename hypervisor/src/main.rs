@@ -56,8 +56,9 @@ fn main(image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
         debug!("Virtualizing the system");
         virtualize_system(&regs);
     }
-    is_hlat_hypervisor_present();
     info!("The HLAT hypervisor has been installed successfully");
+    //unsafe { vmcall(0, 0xff12345, 0, 0) };
+    //unsafe { vmcall(0, 0xfffff802_62a42000, 0, 0) };
     Status::SUCCESS
 }
 
@@ -70,6 +71,10 @@ extern "efiapi" {
     /// Captures current general purpose registers, RFLAGS, RSP, and RIP.
     fn capture_registers(registers: &mut GuestRegisters);
 }
+
+//extern "C" {
+//    fn vmcall(number: u64, rdx: u64, r8: u64, r9: u64);
+//}
 global_asm!(include_str!("capture_registers.nasm"));
 
 /// The structure representing a single memory page (4KB).

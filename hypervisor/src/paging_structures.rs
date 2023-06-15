@@ -31,21 +31,21 @@ pub(crate) fn initialize_paging_structures(paging_structures: &mut PagingStructu
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Pml4(Table);
+pub(crate) struct Pml4(pub Table);
 
 #[derive(Debug, Clone, Copy)]
-struct Pdpt(Table);
+pub(crate) struct Pdpt(pub Table);
 
 #[derive(Debug, Clone, Copy)]
-struct Pd(Table);
+pub(crate) struct Pd(pub Table);
 
 #[derive(Debug, Clone, Copy)]
-struct Pt(Table);
+pub(crate) struct Pt(pub Table);
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, align(4096))]
-struct Table {
-    entries: [Entry; 512],
+pub(crate) struct Table {
+    pub(crate) entries: [Entry; 512],
 }
 
 bitfield! {
@@ -54,6 +54,9 @@ bitfield! {
     impl Debug;
     pub present, set_present: 0;
     pub writable, set_writable: 1;
+    pub accessed, set_accessed: 5;
+    pub dirty, set_dirty: 6;
     pub large, set_large: 7;
+    pub restart, set_restart: 11;
     pub pfn, set_pfn: 51, 12;
 }
