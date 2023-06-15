@@ -1,5 +1,7 @@
 //! The module containing the [`BootTimeAllocator`] type.
 
+// FIXME: consider deleting this
+
 use crate::system_table::system_table;
 use core::alloc::{GlobalAlloc, Layout};
 use uefi::table::boot::{AllocateType, MemoryType};

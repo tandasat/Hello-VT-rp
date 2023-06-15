@@ -303,9 +303,7 @@ impl Vm {
             VMCS_CTRL_TERTIARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
             Self::adjust_vmx_control(
                 VmxControl::ProcessorBased3,
-                IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG
-                    | _IA32_VMX_PROCBASED_CTLS3_EPT_PAGING_WRITE_CONTROL_FLAG
-                    | _IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG,
+                IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG,
             ),
         );
         vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
@@ -558,7 +556,7 @@ extern "efiapi" {
     /// Runs the VM until VM-exit occurs.
     fn run_vmx_vm(registers: &mut GuestRegisters, launched: u64) -> u64;
 }
-global_asm!(include_str!("run_vmx_vm.nasm"));
+global_asm!(include_str!("run_vmx_vm.S"));
 
 // See: Table 25-6. Definitions of Primary Processor-Based VM-Execution Controls
 pub(crate) const IA32_VMX_PROCBASED_CTLS_ACTIVATE_TERTIARY_CONTROLS_FLAG: u64 = 1 << 17;

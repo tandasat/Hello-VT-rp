@@ -47,4 +47,4 @@ extern "efiapi" {
     // Jumps to the landing code with the new stack pointer.
     fn switch_stack(regs: &GuestRegisters, landing_code: usize, stack_base: u64) -> !;
 }
-global_asm!(include_str!("switch_stack.nasm"));
+global_asm!(include_str!("switch_stack.S"));

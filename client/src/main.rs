@@ -8,11 +8,10 @@ fn main() {
         return;
     }
 
-    let number = u64::from_str_radix(args[1].trim_start_matches("0x"), 10).unwrap();
+    let number = args[1].trim_start_matches("0x").parse::<u64>().unwrap();
     let rdx: u64 = u64::from_str_radix(args[2].trim_start_matches("0x"), 16).unwrap();
-    println!("{number} 0x{rdx:x?}");
-    let ok = unsafe { vmcall(number, rdx, 0, 0) };
-    println!("hohoho: {ok}");
+    let status_code = unsafe { vmcall(number, rdx, 0, 0) };
+    println!("VMCALL({number}, 0x{rdx:x?}): {status_code}");
 }
 
 extern "C" {

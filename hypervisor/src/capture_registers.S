@@ -55,11 +55,3 @@ capture_registers:
     mov     [rcx + registers_rip], rax
 
     ret
-
-
-
-
-.global vmcall
-vmcall:
-    vmcall
-    ret

@@ -54,8 +54,6 @@ bitfield! {
     impl Debug;
     pub present, set_present: 0;
     pub writable, set_writable: 1;
-    pub accessed, set_accessed: 5;
-    pub dirty, set_dirty: 6;
     pub large, set_large: 7;
     pub restart, set_restart: 11;
     pub pfn, set_pfn: 51, 12;

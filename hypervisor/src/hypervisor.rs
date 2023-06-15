@@ -6,10 +6,7 @@ use x86::{
 };
 
 use crate::{
-    vmx::{
-        hlat::{protect_la, PagingStructures},
-        vmread, Vm, VmExitReason, Vmx,
-    },
+    vmx::{hlat::protect_la, vmread, Vm, VmExitReason, Vmx},
     x86_instructions::{cr4, cr4_write, rdmsr, wrmsr, xsetbv},
     GuestRegisters, CPUID_VENDOR_AND_MAX_FUNCTIONS, HLAT_VENDOR_NAME,
 };
@@ -94,37 +91,9 @@ fn handle_xsetbv(vm: &mut Vm) {
 }
 
 fn handle_vmcall(vm: &mut Vm) {
-    let number = vm.regs.rcx;
-    assert!(number == 0 || number == 1, "Only hypercall 0 is implemented");
+    assert!(vm.regs.rcx == 0, "Only hypercall 0 is implemented");
 
-    if number == 0 {
-        protect_la(vm);
-    } else {
-        copy_hlat(vm);
-    }
+    protect_la(vm);
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
-}
-
-fn copy_hlat(vm: &mut Vm) {
-    let gpa = vm.regs.rdx;
-
-    for i in (0..core::mem::size_of::<PagingStructures>()).step_by(8) {
-        let addr = gpa + i as u64;
-        let ok = unsafe { *(addr as *mut u64) == 0 };
-        if !ok {
-            vm.regs.rax = addr;
-            return;
-        }
-    }
-
-    unsafe {
-        core::ptr::copy_nonoverlapping(
-            vm.hlat.as_ref() as *const _,
-            gpa as *mut PagingStructures,
-            1,
-        )
-    };
-
-    vm.regs.rax = 0;
 }
