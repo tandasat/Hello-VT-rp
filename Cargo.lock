@@ -75,6 +75,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "client"
+version = "0.1.0"
+
+[[package]]
 name = "ctrlc"
 version = "3.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

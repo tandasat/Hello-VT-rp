@@ -2,6 +2,7 @@
 members = [
     "hypervisor",
     "xtask",
+    "client",
 ]
 resolver = "2"
 
