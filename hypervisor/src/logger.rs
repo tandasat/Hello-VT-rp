@@ -14,39 +14,6 @@ pub(crate) fn init_uart_logger() {
         .unwrap();
 }
 
-#[derive(Clone, Copy)]
-#[repr(u16)]
-enum UartComPort {
-    Com1 = 0x3f8,
-}
-
-#[derive(Default)]
-struct Uart {
-    io_port_base: u16,
-}
-
-impl Uart {
-    const fn new(port: UartComPort) -> Self {
-        Self {
-            io_port_base: port as u16,
-        }
-    }
-}
-
-const UART_OFFSET_TRANSMITTER_HOLDING_BUFFER: u16 = 0;
-const UART_OFFSET_LINE_STATUS: u16 = 5;
-
-impl Write for Uart {
-    // Writes bytes `string` to the serial port.
-    fn write_str(&mut self, string: &str) -> Result<(), fmt::Error> {
-        for byte in string.bytes() {
-            while (inb(self.io_port_base + UART_OFFSET_LINE_STATUS) & 0x20) == 0 {}
-            outb(self.io_port_base + UART_OFFSET_TRANSMITTER_HOLDING_BUFFER, byte);
-        }
-        Ok(())
-    }
-}
-
 struct UartLogger {
     port: Mutex<Uart>,
 }
@@ -73,6 +40,37 @@ impl log::Log for UartLogger {
     }
 
     fn flush(&self) {}
+}
+
+#[derive(Default)]
+struct Uart {
+    io_port_base: u16,
+}
+impl Uart {
+    const fn new(port: UartComPort) -> Self {
+        Self {
+            io_port_base: port as u16,
+        }
+    }
+}
+impl Write for Uart {
+    // Writes bytes `string` to the serial port.
+    fn write_str(&mut self, string: &str) -> Result<(), fmt::Error> {
+        const UART_OFFSET_TRANSMITTER_HOLDING_BUFFER: u16 = 0;
+        const UART_OFFSET_LINE_STATUS: u16 = 5;
+
+        for byte in string.bytes() {
+            while (inb(self.io_port_base + UART_OFFSET_LINE_STATUS) & 0x20) == 0 {}
+            outb(self.io_port_base + UART_OFFSET_TRANSMITTER_HOLDING_BUFFER, byte);
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy)]
+#[repr(u16)]
+enum UartComPort {
+    Com1 = 0x3f8,
 }
 
 static UART_LOGGER: UartLogger = UartLogger::new(UartComPort::Com1);
