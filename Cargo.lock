@@ -210,6 +210,7 @@ dependencies = [
  "num-traits",
  "spin",
  "uefi",
+ "uefi-services",
  "x86",
 ]
 
@@ -456,6 +457,17 @@ dependencies = [
  "bitflags 2.3.2",
  "ptr_meta",
  "uguid",
+]
+
+[[package]]
+name = "uefi-services"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2788f4d571cf33b37838f238e732840c3ec42e899b141bcd96d2b84cf2c2e614"
+dependencies = [
+ "cfg-if",
+ "log",
+ "uefi",
 ]
 
 [[package]]

@@ -1,15 +1,15 @@
 use alloc::alloc::handle_alloc_error;
 use core::{alloc::Layout, arch::global_asm};
 use log::debug;
-use uefi::proto::loaded_image::LoadedImage;
-
-use crate::{
-    hypervisor::start_hypervisor, system_table::system_table_unsafe, GuestRegisters, Page,
+use uefi::{
+    proto::loaded_image::LoadedImage,
+    table::{Boot, SystemTable},
 };
 
-pub(crate) fn virtualize_system(regs: &GuestRegisters) -> ! {
-    let st = unsafe { system_table_unsafe() };
-    let bs = st.boot_services();
+use crate::{hypervisor::start_hypervisor, GuestRegisters, Page};
+
+pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: SystemTable<Boot>) -> ! {
+    let bs = system_table.boot_services();
     let loaded_image = bs
         .open_protocol_exclusive::<LoadedImage>(bs.image_handle())
         .unwrap();

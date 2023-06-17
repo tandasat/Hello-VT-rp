@@ -5,7 +5,7 @@ name = "hlat"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description = "TODO"
+description = "A sample hypervisor that demonstrate use of Intel VT-rp"
 license.workspace = true
 repository.workspace = true
 keywords.workspace = true
@@ -26,7 +26,8 @@ log = "0.4"
 num-derive = { version= "0.3", default-features= false }
 num-traits = { version= "0.2", default-features= false }
 spin = "0.9"
-uefi = { version = "0.23", features = ["alloc"] }
+uefi = "0.23"
+uefi-services = { version = "0.20", default-features = false, features = ["panic_handler"]}
 x86 = "0.52"
 
 [features]

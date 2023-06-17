@@ -23,6 +23,7 @@ pub(crate) struct Epts {
 pub(crate) fn initialize_epts(epts: &mut Epts) {
     let mtrr = Mtrr::new();
     trace!("{mtrr:#x?}");
+    trace!("Initializing EPTs");
 
     let mut pa = 0u64;
 

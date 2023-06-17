@@ -9,7 +9,7 @@ fn main() {
     }
 
     let number = args[1].trim_start_matches("0x").parse::<u64>().unwrap();
-    let rdx: u64 = u64::from_str_radix(args[2].trim_start_matches("0x"), 16).unwrap();
+    let rdx = u64::from_str_radix(args[2].trim_start_matches("0x"), 16).unwrap();
     let status_code = unsafe { vmcall(number, rdx, 0, 0) };
     println!("VMCALL({number}, 0x{rdx:x?}): {status_code}");
 }
