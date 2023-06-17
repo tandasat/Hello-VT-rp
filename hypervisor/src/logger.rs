@@ -8,10 +8,8 @@ use core::{fmt, fmt::Write};
 use spin::Mutex;
 
 /// Initializes the logger instance.
-pub(crate) fn init_uart_logger() {
-    log::set_logger(&UART_LOGGER)
-        .map(|()| log::set_max_level(log::LevelFilter::Trace))
-        .unwrap();
+pub(crate) fn init_uart_logger(level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+    log::set_logger(&UART_LOGGER).map(|()| log::set_max_level(level))
 }
 
 struct UartLogger {

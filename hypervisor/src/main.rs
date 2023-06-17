@@ -13,10 +13,7 @@ mod x86_instructions;
 use core::arch::global_asm;
 use log::{debug, error, info};
 use uefi::prelude::*;
-use x86::{
-    cpuid::cpuid,
-    current::paging::{BASE_PAGE_SIZE, LARGE_PAGE_SIZE},
-};
+use x86::{cpuid::cpuid, current::paging::BASE_PAGE_SIZE};
 
 use crate::{logger::init_uart_logger, switch_stack::virtualize_system};
 
@@ -25,8 +22,7 @@ const HLAT_VENDOR_NAME: u32 = 0x54414c48; // "HLAT"
 
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    // Initialize the logger and the system services.
-    init_uart_logger();
+    init_uart_logger(log::LevelFilter::Trace).unwrap();
     info!("hlat.efi loaded🔥");
     uefi_services::init(&mut system_table).unwrap();
 
@@ -45,10 +41,11 @@ fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     unsafe { capture_registers(&mut regs) };
 
     // Since we captured RIP just above, the VM will start running from here.
-    // Check if current execution is in the VM mode, and if so, done.
+    // Check if our hypervisor is already loaded. If so, done, otherwise, continue
+    // installing the hypervisor.
     if !is_hlat_hypervisor_present() {
         debug!("Virtualizing the system");
-        virtualize_system(&regs, system_table);
+        virtualize_system(&regs, &system_table);
     }
     info!("The HLAT hypervisor has been installed successfully");
     Status::SUCCESS
@@ -72,12 +69,6 @@ global_asm!(include_str!("capture_registers.S"));
 #[derive(Debug, Clone, Copy)]
 #[repr(C, align(4096))]
 struct Page([u8; BASE_PAGE_SIZE]);
-const _: () = assert!(core::mem::size_of::<Page>() == BASE_PAGE_SIZE);
-
-#[derive(Debug, Clone, Copy)]
-#[repr(C, align(0x200000))]
-struct LargePage([u8; LARGE_PAGE_SIZE]);
-const _: () = assert!(core::mem::size_of::<LargePage>() == LARGE_PAGE_SIZE);
 
 /// The collection of the guest general purpose register values.
 #[derive(Clone, Copy, Debug, Default)]

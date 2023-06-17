@@ -8,7 +8,7 @@ use uefi::{
 
 use crate::{hypervisor::start_hypervisor, GuestRegisters, Page};
 
-pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: SystemTable<Boot>) -> ! {
+pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: &SystemTable<Boot>) -> ! {
     let bs = system_table.boot_services();
     let loaded_image = bs
         .open_protocol_exclusive::<LoadedImage>(bs.image_handle())
@@ -19,12 +19,13 @@ pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: SystemTable
     debug!("Image range: {image_range:#x?}");
 
     // Prevent relocation by zapping the Relocation Table in the PE header. UEFI
-    // keeps the list of runtime drivers and apply patches into their code and
-    // data according with relocation information as address translation switches
+    // keeps the list of runtime drivers and applyies patches into their code and
+    // data according with relocation information, as address translation switches
     // from physical-mode to virtual-mode when the OS starts. This causes a problem
-    // with us because we (the host part) keeps running under physical-mode (as
-    // we have our own page tables). Relocation ends up breaking the host code,
-    // and that has to be prevented. Dirty and easiest way is to nullify the table.
+    // with us because the host part keeps running under physical-mode, as the
+    // host has its own page tables. Relocation ends up breaking the host code.
+    // The easiest way is prevent this from happning is to nullify the relocation
+    // table.
     unsafe {
         *((image_base + 0x128) as *mut u32) = 0;
         *((image_base + 0x12c) as *mut u32) = 0;

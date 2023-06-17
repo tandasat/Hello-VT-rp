@@ -31,16 +31,16 @@ pub(crate) fn initialize_paging_structures(paging_structures: &mut PagingStructu
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pml4(pub Table);
+pub(crate) struct Pml4(pub(crate) Table);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pdpt(pub Table);
+pub(crate) struct Pdpt(pub(crate) Table);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pd(pub Table);
+pub(crate) struct Pd(pub(crate) Table);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pt(pub Table);
+pub(crate) struct Pt(pub(crate) Table);
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, align(4096))]
