@@ -3,7 +3,7 @@ use std::{
     env, fmt,
     io::{BufRead, BufReader},
     path::Path,
-    process::Stdio,
+    process::{Command, Stdio},
     sync::mpsc::channel,
     thread,
     time::{Duration, SystemTime},
@@ -50,13 +50,13 @@ impl TestVm for Bochs {
         thread::spawn(move || {
             // Start Bochs from the "tests" directory in background.
             static DBG_CMD: &str = "./bochs/dbg_command.txt";
-            //let bochs = if cfg!(target_os = "windows") {
-            //    r"C:\class\Bochs\bochs\obj-release\bochs.exe"
-            //} else {
-            //    "bochs"
-            //};
-            let bxrc = format!("./bochs/{}_{cpu_type}.bxrc", "linux");
-            let output = UnixCommand::new("bochs")
+            let bochs = if cfg!(target_os = "windows") {
+                r"C:\class\Bochs\bochs\obj-release\bochs.exe"
+            } else {
+                "bochs"
+            };
+            let bxrc = format!("./bochs/{}_{cpu_type}.bxrc", env::consts::OS);
+            let output = Command::new(bochs)
                 .args(["-q", "-unlock", "-rc", DBG_CMD, "-f", &bxrc])
                 .current_dir(Path::new("./tests"))
                 .stdout(Stdio::piped())
