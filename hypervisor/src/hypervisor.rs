@@ -91,9 +91,11 @@ fn handle_xsetbv(vm: &mut Vm) {
 }
 
 fn handle_vmcall(vm: &mut Vm) {
-    assert!(vm.regs.rcx == 0, "Only hypercall 0 is implemented");
+    if cfg!(feature = "enable_vt_rp") {
+        assert!(vm.regs.rcx == 0, "Only hypercall 0 is implemented");
 
-    protect_la(vm);
+        protect_la(vm);
+    }
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }

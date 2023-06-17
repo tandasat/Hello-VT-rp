@@ -28,3 +28,9 @@ num-traits = { version= "0.2", default-features= false }
 spin = "0.9"
 uefi = { version = "0.20", features = ["alloc"] }
 x86 = "0.52"
+
+[features]
+default = []
+
+# Enable VT-rp. Not compatible with VMware or Bochs.
+enable_vt_rp = []

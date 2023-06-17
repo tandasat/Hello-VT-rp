@@ -274,8 +274,7 @@ impl Vm {
             vmcs::control::PRIMARY_PROCBASED_EXEC_CONTROLS,
             Self::adjust_vmx_control(
                 VmxControl::ProcessorBased,
-                IA32_VMX_PROCBASED_CTLS_ACTIVATE_TERTIARY_CONTROLS_FLAG
-                    | IA32_VMX_PROCBASED_CTLS_USE_MSR_BITMAPS_FLAG
+                IA32_VMX_PROCBASED_CTLS_USE_MSR_BITMAPS_FLAG
                     | IA32_VMX_PROCBASED_CTLS_ACTIVATE_SECONDARY_CONTROLS_FLAG,
             ),
         );
@@ -298,15 +297,26 @@ impl Vm {
             Self::eptp_from_nested_cr3(self.epts.as_ref() as *const _ as u64),
         );
 
-        initialize_hlat_table(self.hlat.as_mut());
-        vmwrite(
-            VMCS_CTRL_TERTIARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
-            Self::adjust_vmx_control(
-                VmxControl::ProcessorBased3,
-                IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG,
-            ),
-        );
-        vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
+        if cfg!(feature = "enable_vt_rp") {
+            initialize_hlat_table(self.hlat.as_mut());
+
+            vmwrite(
+                vmcs::control::PRIMARY_PROCBASED_EXEC_CONTROLS,
+                Self::adjust_vmx_control(
+                    VmxControl::ProcessorBased,
+                    IA32_VMX_PROCBASED_CTLS_ACTIVATE_TERTIARY_CONTROLS_FLAG
+                        | vmread(vmcs::control::PRIMARY_PROCBASED_EXEC_CONTROLS),
+                ),
+            );
+            vmwrite(
+                VMCS_CTRL_TERTIARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+                Self::adjust_vmx_control(
+                    VmxControl::ProcessorBased3,
+                    IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG,
+                ),
+            );
+            vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
+        }
     }
 
     pub(crate) fn run(&mut self) -> VmExitReason {
@@ -413,7 +423,7 @@ impl Vm {
         effective_value &= allowed1;
         assert!(
             effective_value | requested_value == effective_value,
-            "One or more requested features are not supported: {effective_value:#x?} : {requested_value:#x?}"
+            "One or more requested features are not supported for {control:?}: {effective_value:#x?} vs {requested_value:#x?}"
         );
         u64::from(effective_value)
     }
@@ -542,7 +552,7 @@ unsafe fn box_zeroed<T>() -> Box<T> {
     unsafe { Box::from_raw(ptr) }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum VmxControl {
     PinBased,
     ProcessorBased,
