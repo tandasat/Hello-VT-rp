@@ -51,8 +51,10 @@ impl Descriptors {
         };
 
         vm_data.gdt = current_gdt.to_vec();
+        // A TSS descriptor is 16 bytes. Push extra 0 for the upper 64bit part.
+        // See: 3.5.2 Segment Descriptor Tables in IA-32e Mode
         vm_data.gdt.push(tss_desc.as_u64());
-        vm_data.gdt.push(0); // FIXME
+        vm_data.gdt.push(0);
         vm_data.gdtr.base = vm_data.gdt.as_ptr();
         vm_data.gdtr.limit = u16::try_from(vm_data.gdt.len() * 8 - 1).unwrap();
         vm_data.tr = SegmentSelector::new(vm_data.gdt.len() as u16 - 2, x86::Ring::Ring0);
