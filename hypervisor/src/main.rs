@@ -7,7 +7,7 @@ mod hypervisor;
 mod logger;
 mod paging_structures;
 mod switch_stack;
-mod vmx;
+mod intel_vt;
 mod x86_instructions;
 
 use core::arch::global_asm;

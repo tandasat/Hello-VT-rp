@@ -1,6 +1,6 @@
 use bitfield::bitfield;
 use core::ptr::addr_of;
-use x86::{bits32::paging::BASE_PAGE_SHIFT, current::paging::LARGE_PAGE_SIZE};
+use x86::current::paging::{BASE_PAGE_SHIFT, LARGE_PAGE_SIZE};
 
 #[repr(C, align(4096))]
 pub(crate) struct PagingStructures {

@@ -145,7 +145,7 @@ fn vmxon(vmxon_region: &mut Vmxon) {
 }
 
 /// The wrapper of the VMXOFF instruction.
-pub(crate) fn vmxoff() {
+fn vmxoff() {
     // Safety: this project runs at CPL0.
     unsafe { x86::current::vmx::vmxoff().unwrap() };
 }

@@ -6,15 +6,17 @@ use x86::{
 };
 
 use crate::{
-    vmx::{
+    intel_vt::{
         hlat::protect_la,
-        vm::{vmread, Vm},
+        vm::{vmread, Vm, VmExitReason},
         vmx::Vmx,
-        VmExitReason,
     },
     x86_instructions::{cr4, cr4_write, rdmsr, wrmsr, xsetbv},
     GuestRegisters,
 };
+
+pub(crate) const CPUID_VENDOR_AND_MAX_FUNCTIONS: u32 = 0x4000_0000;
+pub(crate) const HLAT_VENDOR_NAME: u32 = 0x5441_4c48; // "HLAT"
 
 pub(crate) fn start_hypervisor(regs: &GuestRegisters) -> ! {
     debug!("Enabling virtualization extension");
@@ -104,6 +106,3 @@ fn handle_vmcall(vm: &mut Vm) {
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }
-
-pub(crate) const CPUID_VENDOR_AND_MAX_FUNCTIONS: u32 = 0x4000_0000;
-pub(crate) const HLAT_VENDOR_NAME: u32 = 0x5441_4c48; // "HLAT"

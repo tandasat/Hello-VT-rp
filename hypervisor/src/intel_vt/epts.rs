@@ -4,7 +4,7 @@ use log::trace;
 use uefi::table::boot::PAGE_SIZE;
 use x86::current::paging::{BASE_PAGE_SHIFT, LARGE_PAGE_SIZE};
 
-use crate::vmx::mtrr::Mtrr;
+use super::mtrr::Mtrr;
 
 #[repr(C, align(4096))]
 pub(crate) struct Epts {
@@ -64,27 +64,27 @@ pub(crate) fn initialize_epts(epts: &mut Epts) {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pml4(pub(crate) Table);
+struct Pml4(Table);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pdpt(pub(crate) Table);
+struct Pdpt(Table);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pd(pub(crate) Table);
+struct Pd(Table);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Pt(pub(crate) Table);
+struct Pt(Table);
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, align(4096))]
-pub(crate) struct Table {
-    pub(crate) entries: [Entry; 512],
+struct Table {
+    entries: [Entry; 512],
 }
 
 bitfield! {
     /// Figure 29-1. Formats of EPTP and EPT Paging-Structure Entries
     #[derive(Clone, Copy)]
-    pub struct Entry(u64);
+    struct Entry(u64);
     impl Debug;
     readable, set_readable: 0;
     writable, set_writable: 1;

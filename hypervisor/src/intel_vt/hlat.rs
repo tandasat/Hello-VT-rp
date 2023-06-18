@@ -1,12 +1,8 @@
 use core::ptr::addr_of;
 use x86::current::paging::BASE_PAGE_SHIFT;
 
-use crate::{
-    paging_structures::{Pd, Pdpt, Pml4, Pt},
-    vmx::vm::vmread,
-};
-
-use super::vm::Vm;
+use super::vm::{vmread, Vm};
+use crate::paging_structures::{Pd, Pdpt, Pml4, Pt};
 
 #[repr(C, align(4096))]
 pub(crate) struct PagingStructures {
