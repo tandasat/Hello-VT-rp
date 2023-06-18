@@ -12,16 +12,11 @@ use x86::{
     vmx::vmcs,
 };
 
+use super::{descriptors::Descriptors, epts::Epts, hlat};
 use crate::{
-    paging_structures::{initialize_paging_structures, PagingStructures},
+    paging_structures::PagingStructures,
     x86_instructions::{cr0, cr3, cr4, lar, lsl, rdmsr, sgdt, sidt, tr},
     GuestRegisters, Page,
-};
-
-use super::{
-    descriptors::Descriptors,
-    epts::{initialize_epts, Epts},
-    hlat::{self, initialize_hlat_table},
 };
 
 pub(crate) enum VmExitReason {
@@ -45,22 +40,25 @@ pub(crate) struct Vm {
 
 impl Vm {
     pub(crate) fn new() -> Self {
-        let mut paging_structures = unsafe { box_zeroed::<PagingStructures>() };
-        initialize_paging_structures(paging_structures.as_mut());
-
         let mut vmcs = Box::<Vmcs>::default();
         vmcs.revision_id = rdmsr(x86::msr::IA32_VMX_BASIC) as u32;
         trace!("{vmcs:#x?}");
 
+        let mut paging_structures = unsafe { box_zeroed::<PagingStructures>() };
+        paging_structures.build_identity();
+
+        let mut epts = unsafe { box_zeroed::<Epts>() };
+        epts.build_identify();
+
         Self {
-            paging_structures,
             regs: GuestRegisters::default(),
-            epts: unsafe { box_zeroed::<Epts>() },
+            epts,
+            hlat: unsafe { box_zeroed::<hlat::PagingStructures>() },
+            paging_structures,
             launched: false,
             descriptors: Descriptors::new_from_current(),
             vmcs,
             msr_bitmaps: unsafe { box_zeroed::<Page>() },
-            hlat: unsafe { box_zeroed::<hlat::PagingStructures>() },
         }
     }
 
@@ -169,16 +167,12 @@ impl Vm {
             ),
         );
         vmwrite(vmcs::control::MSR_BITMAPS_ADDR_FULL, self.msr_bitmaps.as_ref() as *const _ as u64);
-
-        initialize_epts(self.epts.as_mut());
         vmwrite(
             vmcs::control::EPTP_FULL,
             Self::eptp_from_nested_cr3(self.epts.as_ref() as *const _ as u64),
         );
 
         if cfg!(feature = "enable_vt_rp") {
-            initialize_hlat_table(self.hlat.as_mut());
-
             vmwrite(
                 vmcs::control::PRIMARY_PROCBASED_EXEC_CONTROLS,
                 Self::adjust_vmx_control(
@@ -195,6 +189,7 @@ impl Vm {
                 ),
             );
             vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
+            self.hlat.deactivate();
         }
     }
 

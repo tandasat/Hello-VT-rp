@@ -13,51 +13,55 @@ pub(crate) struct Epts {
     pd: [Pd; 512],
     pt: Pt,
 }
+impl Epts {
+    pub(crate) fn build_identify(&mut self) {
+        let mtrr = Mtrr::new();
+        trace!("{mtrr:#x?}");
+        trace!("Initializing EPTs");
 
-pub(crate) fn initialize_epts(epts: &mut Epts) {
-    let mtrr = Mtrr::new();
-    trace!("{mtrr:#x?}");
-    trace!("Initializing EPTs");
+        let mut pa = 0u64;
 
-    let mut pa = 0u64;
-
-    epts.pml4.0.entries[0].set_readable(true);
-    epts.pml4.0.entries[0].set_writable(true);
-    epts.pml4.0.entries[0].set_executable(true);
-    epts.pml4.0.entries[0].set_pfn(addr_of!(epts.pdpt) as u64 >> BASE_PAGE_SHIFT);
-    for (i, pdpte) in epts.pdpt.0.entries.iter_mut().enumerate() {
-        pdpte.set_readable(true);
-        pdpte.set_writable(true);
-        pdpte.set_executable(true);
-        pdpte.set_pfn(addr_of!(epts.pd[i]) as u64 >> BASE_PAGE_SHIFT);
-        for pde in &mut epts.pd[i].0.entries {
-            if pa == 0 {
-                pde.set_readable(true);
-                pde.set_writable(true);
-                pde.set_executable(true);
-                pde.set_pfn(addr_of!(epts.pt) as u64 >> BASE_PAGE_SHIFT);
-                for pte in &mut epts.pt.0.entries {
-                    let memory_type = mtrr.find(pa..pa + PAGE_SIZE as u64).unwrap_or_else(|| {
-                        panic!("Memory type could not be resolved for {pa:#x?}")
-                    });
-                    pte.set_readable(true);
-                    pte.set_writable(true);
-                    pte.set_executable(true);
-                    pte.set_memory_type(memory_type as u64);
-                    pte.set_pfn(pa >> BASE_PAGE_SHIFT);
-                    pa += PAGE_SIZE as u64;
+        self.pml4.0.entries[0].set_readable(true);
+        self.pml4.0.entries[0].set_writable(true);
+        self.pml4.0.entries[0].set_executable(true);
+        self.pml4.0.entries[0].set_pfn(addr_of!(self.pdpt) as u64 >> BASE_PAGE_SHIFT);
+        for (i, pdpte) in self.pdpt.0.entries.iter_mut().enumerate() {
+            pdpte.set_readable(true);
+            pdpte.set_writable(true);
+            pdpte.set_executable(true);
+            pdpte.set_pfn(addr_of!(self.pd[i]) as u64 >> BASE_PAGE_SHIFT);
+            for pde in &mut self.pd[i].0.entries {
+                if pa == 0 {
+                    pde.set_readable(true);
+                    pde.set_writable(true);
+                    pde.set_executable(true);
+                    pde.set_pfn(addr_of!(self.pt) as u64 >> BASE_PAGE_SHIFT);
+                    for pte in &mut self.pt.0.entries {
+                        let memory_type =
+                            mtrr.find(pa..pa + PAGE_SIZE as u64).unwrap_or_else(|| {
+                                panic!("Memory type could not be resolved for {pa:#x?}")
+                            });
+                        pte.set_readable(true);
+                        pte.set_writable(true);
+                        pte.set_executable(true);
+                        pte.set_memory_type(memory_type as u64);
+                        pte.set_pfn(pa >> BASE_PAGE_SHIFT);
+                        pa += PAGE_SIZE as u64;
+                    }
+                } else {
+                    let memory_type =
+                        mtrr.find(pa..pa + LARGE_PAGE_SIZE as u64)
+                            .unwrap_or_else(|| {
+                                panic!("Memory type could not be resolved for {pa:#x?}")
+                            });
+                    pde.set_readable(true);
+                    pde.set_writable(true);
+                    pde.set_executable(true);
+                    pde.set_memory_type(memory_type as u64);
+                    pde.set_large(true);
+                    pde.set_pfn(pa >> BASE_PAGE_SHIFT);
+                    pa += LARGE_PAGE_SIZE as u64;
                 }
-            } else {
-                let memory_type = mtrr
-                    .find(pa..pa + LARGE_PAGE_SIZE as u64)
-                    .unwrap_or_else(|| panic!("Memory type could not be resolved for {pa:#x?}"));
-                pde.set_readable(true);
-                pde.set_writable(true);
-                pde.set_executable(true);
-                pde.set_memory_type(memory_type as u64);
-                pde.set_large(true);
-                pde.set_pfn(pa >> BASE_PAGE_SHIFT);
-                pa += LARGE_PAGE_SIZE as u64;
             }
         }
     }

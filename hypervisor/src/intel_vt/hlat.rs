@@ -11,23 +11,24 @@ pub(crate) struct PagingStructures {
     pd: Pd,
     pt: Pt,
 }
-
-pub(crate) fn initialize_hlat_table(tables: &mut PagingStructures) {
-    for pml4e in &mut tables.pml4.0.entries {
-        pml4e.set_present(true);
-        pml4e.set_restart(true);
-    }
-    for pdpte in &mut tables.pdpt.0.entries {
-        pdpte.set_present(true);
-        pdpte.set_restart(true);
-    }
-    for pde2mb in &mut tables.pd.0.entries {
-        pde2mb.set_present(true);
-        pde2mb.set_restart(true);
-    }
-    for pte in &mut tables.pt.0.entries {
-        pte.set_present(true);
-        pte.set_restart(true);
+impl PagingStructures {
+    pub(crate) fn deactivate(&mut self) {
+        for pml4e in &mut self.pml4.0.entries {
+            pml4e.set_present(true);
+            pml4e.set_restart(true);
+        }
+        for pdpte in &mut self.pdpt.0.entries {
+            pdpte.set_present(true);
+            pdpte.set_restart(true);
+        }
+        for pde2mb in &mut self.pd.0.entries {
+            pde2mb.set_present(true);
+            pde2mb.set_restart(true);
+        }
+        for pte in &mut self.pt.0.entries {
+            pte.set_present(true);
+            pte.set_restart(true);
+        }
     }
 }
 

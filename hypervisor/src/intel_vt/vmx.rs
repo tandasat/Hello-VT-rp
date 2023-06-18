@@ -6,11 +6,10 @@ use x86::{
     segmentation::SegmentSelector,
 };
 
+use super::descriptors::Descriptors;
 use crate::x86_instructions::{
     cr0, cr0_write, cr4, cr4_write, lgdt, load_tr, rdmsr, sgdt, tr, wrmsr,
 };
-
-use super::descriptors::Descriptors;
 
 pub(crate) struct Vmx {
     vmxon_region: Vmxon,

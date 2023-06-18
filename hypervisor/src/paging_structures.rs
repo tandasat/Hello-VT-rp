@@ -8,24 +8,25 @@ pub(crate) struct PagingStructures {
     pdpt: Pdpt,
     pd: [Pd; 512],
 }
+impl PagingStructures {
+    pub(crate) fn build_identity(&mut self) {
+        let pml4 = &mut self.pml4;
+        pml4.0.entries[0].set_present(true);
+        pml4.0.entries[0].set_writable(true);
+        pml4.0.entries[0].set_pfn(addr_of!(self.pdpt) as u64 >> BASE_PAGE_SHIFT);
 
-pub(crate) fn initialize_paging_structures(paging_structures: &mut PagingStructures) {
-    let pml4 = &mut paging_structures.pml4;
-    pml4.0.entries[0].set_present(true);
-    pml4.0.entries[0].set_writable(true);
-    pml4.0.entries[0].set_pfn(addr_of!(paging_structures.pdpt) as u64 >> BASE_PAGE_SHIFT);
-
-    let mut pa = 0;
-    for (i, pdpte) in paging_structures.pdpt.0.entries.iter_mut().enumerate() {
-        pdpte.set_present(true);
-        pdpte.set_writable(true);
-        pdpte.set_pfn(addr_of!(paging_structures.pd[i]) as u64 >> BASE_PAGE_SHIFT);
-        for pde in &mut paging_structures.pd[i].0.entries {
-            pde.set_present(true);
-            pde.set_writable(true);
-            pde.set_large(true);
-            pde.set_pfn(pa >> BASE_PAGE_SHIFT);
-            pa += LARGE_PAGE_SIZE as u64;
+        let mut pa = 0;
+        for (i, pdpte) in self.pdpt.0.entries.iter_mut().enumerate() {
+            pdpte.set_present(true);
+            pdpte.set_writable(true);
+            pdpte.set_pfn(addr_of!(self.pd[i]) as u64 >> BASE_PAGE_SHIFT);
+            for pde in &mut self.pd[i].0.entries {
+                pde.set_present(true);
+                pde.set_writable(true);
+                pde.set_large(true);
+                pde.set_pfn(pa >> BASE_PAGE_SHIFT);
+                pa += LARGE_PAGE_SIZE as u64;
+            }
         }
     }
 }
