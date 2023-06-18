@@ -6,9 +6,14 @@ use x86::{
 };
 
 use crate::{
-    vmx::{hlat::protect_la, vmread, Vm, VmExitReason, Vmx},
+    vmx::{
+        hlat::protect_la,
+        vm::{vmread, Vm},
+        vmx::Vmx,
+        VmExitReason,
+    },
     x86_instructions::{cr4, cr4_write, rdmsr, wrmsr, xsetbv},
-    GuestRegisters, CPUID_VENDOR_AND_MAX_FUNCTIONS, HLAT_VENDOR_NAME,
+    GuestRegisters,
 };
 
 pub(crate) fn start_hypervisor(regs: &GuestRegisters) -> ! {
@@ -49,13 +54,13 @@ fn handle_cpuid(vm: &mut Vm) {
         // CPUID.1.ECX[5] indicates if VT-x is supported. Clear this on this
         // processor to prevent other hypervisor tries to use it.
         // See: Table 3-10. Feature Information Returned in the ECX Register
-        regs.ecx &= !(1 << 5)
+        regs.ecx &= !(1 << 5);
     }
 
-    vm.regs.rax = regs.eax as u64;
-    vm.regs.rbx = regs.ebx as u64;
-    vm.regs.rcx = regs.ecx as u64;
-    vm.regs.rdx = regs.edx as u64;
+    vm.regs.rax = u64::from(regs.eax);
+    vm.regs.rbx = u64::from(regs.ebx);
+    vm.regs.rcx = u64::from(regs.ecx);
+    vm.regs.rdx = u64::from(regs.edx);
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }
 
@@ -99,3 +104,6 @@ fn handle_vmcall(vm: &mut Vm) {
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }
+
+pub(crate) const CPUID_VENDOR_AND_MAX_FUNCTIONS: u32 = 0x4000_0000;
+pub(crate) const HLAT_VENDOR_NAME: u32 = 0x5441_4c48; // "HLAT"

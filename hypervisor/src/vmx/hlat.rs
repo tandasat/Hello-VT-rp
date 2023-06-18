@@ -1,11 +1,12 @@
 use core::ptr::addr_of;
 use x86::current::paging::BASE_PAGE_SHIFT;
 
-use super::Vm;
 use crate::{
     paging_structures::{Pd, Pdpt, Pml4, Pt},
-    vmx::vmread,
+    vmx::vm::vmread,
 };
+
+use super::vm::Vm;
 
 #[repr(C, align(4096))]
 pub(crate) struct PagingStructures {
@@ -34,6 +35,7 @@ pub(crate) fn initialize_hlat_table(tables: &mut PagingStructures) {
     }
 }
 
+#[allow(clippy::similar_names)]
 pub(crate) fn protect_la(vm: &mut Vm) {
     let la = vm.regs.rdx as usize;
     let i4 = la >> 39 & 0b1_1111_1111;

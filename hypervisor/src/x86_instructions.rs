@@ -81,7 +81,7 @@ pub(crate) fn lsl(selector: SegmentSelector) -> u32 {
             "pushfq",
             "pop {}",
             out(reg) limit,
-            in(reg) selector.bits() as u64,
+            in(reg) u64::from(selector.bits()),
             lateout(reg) flags
         );
     };
@@ -99,7 +99,7 @@ pub(crate) fn lar(selector: SegmentSelector) -> u32 {
             "pushfq",
             "pop {}",
             out(reg) access_rights,
-            in(reg) selector.bits() as u64,
+            in(reg) u64::from(selector.bits()),
             lateout(reg) flags
         );
     };

@@ -39,13 +39,13 @@ impl Mtrr {
         // Look up the fixed range MTRRs if the range start within 1MB (which is managed
         // by the fixed range MTRRs), since the fixed range MTRRs are priority over
         // the variable range MTRRs.
-        if range.start < 0x100000 {
+        if range.start < 0x10_0000 {
             // If the range crosses the 1MB boundary, report error. For simplicity,
             // we do not attempt to resolve the memory type of the range that spans both
             // fixed and variable range MTRRs. The caller should query a memory type for
             // a shorter range instead. That is almost always required anyway since
             // lowest 1MB has variety of memory types through fixed range MTRRs.
-            if range.end > 0x100000 {
+            if range.end > 0x10_0000 {
                 return None;
             }
             return self.find_from_fixed(range);

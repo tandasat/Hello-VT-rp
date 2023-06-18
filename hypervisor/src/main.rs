@@ -15,10 +15,11 @@ use log::{debug, error, info};
 use uefi::prelude::*;
 use x86::{cpuid::cpuid, current::paging::BASE_PAGE_SIZE};
 
-use crate::{logger::init_uart_logger, switch_stack::virtualize_system};
-
-const CPUID_VENDOR_AND_MAX_FUNCTIONS: u32 = 0x4000_0000;
-const HLAT_VENDOR_NAME: u32 = 0x54414c48; // "HLAT"
+use crate::{
+    hypervisor::{CPUID_VENDOR_AND_MAX_FUNCTIONS, HLAT_VENDOR_NAME},
+    logger::init_uart_logger,
+    switch_stack::virtualize_system,
+};
 
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
