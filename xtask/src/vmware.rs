@@ -1,5 +1,6 @@
 use crate::{copy_artifacts_to, DynError, TestVm, UnixCommand};
 use std::{
+    env,
     fs::{self},
     io::{BufRead, BufReader},
     path::Path,
@@ -60,13 +61,9 @@ impl TestVm for Vmware {
         };
 
         let vmx_path = if wsl::is_wsl() {
-            //windows_path("./tests/samples/vmware/NoOS_windows.vmx")
-            windows_path(
-                "/mnt/c/Users/tanda/Documents/Virtual Machines/Class_Windows/Class_Windows.vmx",
-            )
+            windows_path("./tests/samples/vmware/NoOS_windows.vmx")
         } else {
-            //format!("./tests/samples/vmware/NoOS_{}.vmx", env::consts::OS)
-            r"C:\Users\tanda\Documents\Virtual Machines\Class_Windows\Class_Windows.vmx".to_string()
+            format!("./tests/samples/vmware/NoOS_{}.vmx", env::consts::OS)
         };
 
         // Stop the VM if requested. This is best effort and failures are ignored.

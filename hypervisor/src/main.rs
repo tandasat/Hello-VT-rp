@@ -4,10 +4,10 @@
 extern crate alloc;
 
 mod hypervisor;
+mod intel_vt;
 mod logger;
 mod paging_structures;
 mod switch_stack;
-mod intel_vt;
 mod x86_instructions;
 
 use core::arch::global_asm;
@@ -23,7 +23,7 @@ use crate::{
 
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    init_uart_logger(log::LevelFilter::Trace).unwrap();
+    init_uart_logger(log::LevelFilter::Debug).unwrap();
     info!("hlat.efi loaded🔥");
     uefi_services::init(&mut system_table).unwrap();
 
