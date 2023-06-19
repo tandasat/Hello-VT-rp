@@ -107,18 +107,6 @@ pub(crate) fn lar(selector: SegmentSelector) -> u32 {
     access_rights as u32
 }
 
-pub(crate) fn tr() -> SegmentSelector {
-    unsafe { x86::task::tr() }
-}
-
-pub(crate) fn lgdt<T>(gdt: &DescriptorTablePointer<T>) {
-    unsafe { x86::dtables::lgdt(gdt) };
-}
-
-pub(crate) fn load_tr(sel: SegmentSelector) {
-    unsafe { x86::task::load_tr(sel) };
-}
-
 /// Reads 8-bits from an IO port.
 pub(crate) fn inb(port: u16) -> u8 {
     // Safety: this project runs at CPL0.

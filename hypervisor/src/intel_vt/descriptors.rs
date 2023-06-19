@@ -2,46 +2,34 @@ use alloc::{boxed::Box, vec::Vec};
 use x86::{
     dtables::DescriptorTablePointer,
     segmentation::{
-        BuildDescriptor, Descriptor, DescriptorBuilder, GateDescriptorBuilder, SegmentSelector,
+        cs, BuildDescriptor, CodeSegmentType, Descriptor, DescriptorBuilder, GateDescriptorBuilder,
+        SegmentDescriptorBuilder, SegmentSelector,
     },
 };
 
 use crate::x86_instructions::sgdt;
 
-//
-#[derive(derivative::Derivative)]
-#[derivative(Debug)]
 pub(crate) struct Descriptors {
     gdt: Vec<u64>,
     pub(crate) gdtr: DescriptorTablePointer<u64>,
-    // `tss` has to be on heap as `gdt` contains an address of it. Otherwise,
-    // copying `VmData` would change the address and invalidate contents of `gdt`.
-    #[derivative(Debug = "ignore")]
-    tss: Box<TaskStateSegment>,
+    pub(crate) cs: SegmentSelector,
     pub(crate) tr: SegmentSelector,
-    pub(crate) tss_base: u64,
-    pub(crate) tss_limit: u32,
-    pub(crate) tss_ar: u32,
+    pub(crate) tss: TaskStateSegment,
 }
 impl Default for Descriptors {
     fn default() -> Self {
         Self {
             gdt: Vec::new(),
             gdtr: DescriptorTablePointer::<u64>::default(),
-            tss: Box::new(TaskStateSegment([0; 104])),
+            cs: SegmentSelector::from_raw(0),
             tr: SegmentSelector::from_raw(0),
-            tss_base: 0,
-            tss_limit: 0,
-            tss_ar: 0,
+            tss: TaskStateSegment::default(),
         }
     }
 }
-
 impl Descriptors {
     pub(crate) fn new_from_current() -> Self {
-        let mut vm_data = Self::default();
-        let tss_desc = Self::task_segment_descriptor(vm_data.tss.as_ref());
-
+        // Get the current GDT.
         let current_gdtr = sgdt();
         let current_gdt = unsafe {
             core::slice::from_raw_parts(
@@ -50,34 +38,86 @@ impl Descriptors {
             )
         };
 
-        vm_data.gdt = current_gdt.to_vec();
-        // A TSS descriptor is 16 bytes. Push extra 0 for the upper 64bit part.
+        // Copy the current GDT.
+        let mut descriptors = Self {
+            gdt: current_gdt.to_vec(),
+            ..Default::default()
+        };
+
+        // Append the TSS descriptor. Push extra 0 as it is 16 bytes.
         // See: 3.5.2 Segment Descriptor Tables in IA-32e Mode
-        vm_data.gdt.push(tss_desc.as_u64());
-        vm_data.gdt.push(0);
-        vm_data.gdtr.base = vm_data.gdt.as_ptr();
-        vm_data.gdtr.limit = u16::try_from(vm_data.gdt.len() * 8 - 1).unwrap();
-        vm_data.tr = SegmentSelector::new(vm_data.gdt.len() as u16 - 2, x86::Ring::Ring0);
-        vm_data.tss_base = vm_data.tss.as_ref() as *const _ as u64;
-        vm_data.tss_limit = core::mem::size_of_val(vm_data.tss.as_ref()) as u32 - 1;
-        vm_data.tss_ar = 0x8b00;
-        vm_data
+        let tr_index = descriptors.gdt.len() as u16;
+        descriptors
+            .gdt
+            .push(Self::task_segment_descriptor(&descriptors.tss).as_u64());
+        descriptors.gdt.push(0);
+
+        descriptors.gdtr = DescriptorTablePointer::new_from_slice(&descriptors.gdt);
+        descriptors.cs = cs();
+        descriptors.tr = SegmentSelector::new(tr_index, x86::Ring::Ring0);
+
+        descriptors
+    }
+
+    pub(crate) fn new_for_host() -> Self {
+        let mut descriptors = Self::default();
+
+        descriptors.gdt.push(0);
+        descriptors
+            .gdt
+            .push(Self::code_segment_descriptor().as_u64());
+        descriptors
+            .gdt
+            .push(Self::task_segment_descriptor(&descriptors.tss).as_u64());
+        descriptors.gdt.push(0);
+
+        descriptors.gdtr = DescriptorTablePointer::new_from_slice(&descriptors.gdt);
+        descriptors.cs = SegmentSelector::new(1, x86::Ring::Ring0);
+        descriptors.tr = SegmentSelector::new(2, x86::Ring::Ring0);
+
+        descriptors
     }
 
     /// Builds a segment descriptor from the task state segment.
     fn task_segment_descriptor(tss: &TaskStateSegment) -> Descriptor {
-        let tss_base = tss as *const _ as u64;
-        let tss_size = core::mem::size_of_val(tss) as u64;
-        <DescriptorBuilder as GateDescriptorBuilder<u32>>::tss_descriptor(
-            tss_base,
-            tss_size - 1,
-            true,
-        )
-        .present()
-        .dpl(x86::Ring::Ring0)
-        .finish()
+        <DescriptorBuilder as GateDescriptorBuilder<u32>>::tss_descriptor(tss.base, tss.limit, true)
+            .present()
+            .dpl(x86::Ring::Ring0)
+            .finish()
+    }
+
+    fn code_segment_descriptor() -> Descriptor {
+        DescriptorBuilder::code_descriptor(0, u32::MAX, CodeSegmentType::ExecuteAccessed)
+            .present()
+            .dpl(x86::Ring::Ring0)
+            .limit_granularity_4kb()
+            .l()
+            .finish()
+    }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
+pub(crate) struct TaskStateSegment {
+    pub(crate) base: u64,
+    pub(crate) limit: u64,
+    pub(crate) ar: u32,
+    #[allow(dead_code)]
+    #[derivative(Debug = "ignore")]
+    segment: Box<TaskStateSegmentRaw>,
+}
+impl Default for TaskStateSegment {
+    fn default() -> Self {
+        let segment = Box::new(TaskStateSegmentRaw([0; 104]));
+        Self {
+            base: segment.as_ref() as *const _ as u64,
+            limit: core::mem::size_of_val(segment.as_ref()) as u64 - 1,
+            ar: 0x8b00,
+            segment,
+        }
     }
 }
 
 /// See: Figure 8-11. 64-Bit TSS Format
-struct TaskStateSegment([u8; 104]);
+
+struct TaskStateSegmentRaw([u8; 104]);

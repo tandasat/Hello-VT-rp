@@ -1,35 +1,19 @@
-use log::trace;
 use x86::{
     controlregs::{Cr0, Cr4},
     current::paging::BASE_PAGE_SIZE,
-    dtables::DescriptorTablePointer,
-    segmentation::SegmentSelector,
 };
 
-use super::descriptors::Descriptors;
-use crate::x86_instructions::{
-    cr0, cr0_write, cr4, cr4_write, lgdt, load_tr, rdmsr, sgdt, tr, wrmsr,
-};
+use crate::x86_instructions::{cr0, cr0_write, cr4, cr4_write, rdmsr, wrmsr};
 
 pub(crate) struct Vmx {
     vmxon_region: Vmxon,
     vmx_enabled: bool,
-    original_gdtr: DescriptorTablePointer<u64>,
-    host_descriptors: Descriptors,
 }
 impl Vmx {
     pub(crate) fn new() -> Self {
-        let vmxon_region = Vmxon {
-            revision_id: rdmsr(x86::msr::IA32_VMX_BASIC) as u32,
-            ..Default::default()
-        };
-        trace!("{:#x?}", vmxon_region);
-
         Self {
-            vmxon_region,
+            vmxon_region: Vmxon::default(),
             vmx_enabled: false,
-            original_gdtr: sgdt(),
-            host_descriptors: Descriptors::new_from_current(),
         }
     }
 
@@ -39,20 +23,6 @@ impl Vmx {
         Self::adjust_feature_control_msr();
         vmxon(&mut self.vmxon_region);
         self.vmx_enabled = true;
-        self.adjust_gdt();
-    }
-
-    fn adjust_gdt(&self) {
-        // UEFI does not set TSS in the GDT. This is incompatible to be both as VM
-        // and hypervisor states.
-        // See: 27.2.3 Checks on Host Segment and Descriptor-Table Registers
-        // See: 27.3.1.2 Checks on Guest Segment Registers
-        assert!(tr().bits() == 0);
-
-        // So, let us update the GDTR with the new GDT that is a copy of the current
-        // GDT plus TSS, as well as TR.
-        lgdt(&self.host_descriptors.gdtr);
-        load_tr(self.host_descriptors.tr);
     }
 
     /// Updates the CR0 to satisfy the requirement for entering VMX operation.
@@ -117,8 +87,6 @@ impl Drop for Vmx {
     fn drop(&mut self) {
         if self.vmx_enabled {
             vmxoff();
-            lgdt(&self.original_gdtr);
-            load_tr(SegmentSelector::from_raw(0));
         }
     }
 }
@@ -128,12 +96,20 @@ impl Drop for Vmx {
 ///
 /// See: 25.11.5 VMXON Region
 #[derive(derivative::Derivative)]
-#[derivative(Default, Debug)]
+#[derivative(Debug)]
 #[repr(C, align(4096))]
 struct Vmxon {
     revision_id: u32,
-    #[derivative(Default(value = "[0; 4092]"), Debug = "ignore")]
+    #[derivative(Debug = "ignore")]
     data: [u8; 4092],
+}
+impl Default for Vmxon {
+    fn default() -> Self {
+        Self {
+            revision_id: rdmsr(x86::msr::IA32_VMX_BASIC) as u32,
+            data: [0; 4092],
+        }
+    }
 }
 const _: () = assert!(core::mem::size_of::<Vmxon>() == BASE_PAGE_SIZE);
 

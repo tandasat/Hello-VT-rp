@@ -8,14 +8,14 @@ use core::{alloc::Layout, arch::global_asm};
 use log::trace;
 use x86::{
     current::{paging::BASE_PAGE_SIZE, rflags::RFlags},
-    segmentation::{cs, ds, es, fs, gs, ss, SegmentSelector},
+    segmentation::{cs, ds, es, fs, gs, ss},
     vmx::vmcs,
 };
 
 use super::{descriptors::Descriptors, epts::Epts, hlat};
 use crate::{
     paging_structures::PagingStructures,
-    x86_instructions::{cr0, cr3, cr4, lar, lsl, rdmsr, sgdt, sidt, tr},
+    x86_instructions::{cr0, cr3, cr4, lar, lsl, rdmsr, sidt},
     GuestRegisters, Page,
 };
 
@@ -34,6 +34,7 @@ pub(crate) struct Vm {
     paging_structures: Box<PagingStructures>,
     launched: bool,
     descriptors: Descriptors,
+    host_descriptors: Descriptors,
     vmcs: Box<Vmcs>,
     msr_bitmaps: Box<Page>,
 }
@@ -57,6 +58,7 @@ impl Vm {
             paging_structures,
             launched: false,
             descriptors: Descriptors::new_from_current(),
+            host_descriptors: Descriptors::new_for_host(),
             vmcs,
             msr_bitmaps: unsafe { box_zeroed::<Page>() },
         }
@@ -91,7 +93,7 @@ impl Vm {
         vmwrite(vmcs::guest::GS_ACCESS_RIGHTS, Self::access_rights_from_native(lar(gs())));
         vmwrite(
             vmcs::guest::TR_ACCESS_RIGHTS,
-            Self::access_rights_from_native(self.descriptors.tss_ar),
+            Self::access_rights_from_native(self.descriptors.tss.ar),
         );
         vmwrite(vmcs::guest::LDTR_ACCESS_RIGHTS, Self::access_rights_from_native(0u32));
 
@@ -101,11 +103,11 @@ impl Vm {
         vmwrite(vmcs::guest::DS_LIMIT, lsl(ds()));
         vmwrite(vmcs::guest::FS_LIMIT, lsl(fs()));
         vmwrite(vmcs::guest::GS_LIMIT, lsl(gs()));
-        vmwrite(vmcs::guest::TR_LIMIT, self.descriptors.tss_limit);
+        vmwrite(vmcs::guest::TR_LIMIT, self.descriptors.tss.limit);
         vmwrite(vmcs::guest::LDTR_LIMIT, 0u32);
 
         // All segment base registers are assumed to be zero, except that of TR.
-        vmwrite(vmcs::guest::TR_BASE, self.descriptors.tss_base);
+        vmwrite(vmcs::guest::TR_BASE, self.descriptors.tss.base);
 
         vmwrite(vmcs::guest::GDTR_BASE, self.descriptors.gdtr.base as u64);
         vmwrite(vmcs::guest::GDTR_LIMIT, self.descriptors.gdtr.limit);
@@ -120,15 +122,13 @@ impl Vm {
         vmwrite(vmcs::guest::LINK_PTR_FULL, u64::MAX);
 
         // Initialize the host part
-        let gdtr = sgdt();
-        let idtr = sidt();
-        vmwrite(vmcs::host::CS_SELECTOR, cs().bits());
-        vmwrite(vmcs::host::TR_SELECTOR, tr().bits());
+        vmwrite(vmcs::host::CS_SELECTOR, self.host_descriptors.cs.bits());
+        vmwrite(vmcs::host::TR_SELECTOR, self.host_descriptors.tr.bits());
         vmwrite(vmcs::host::CR0, cr0().bits() as u64);
         vmwrite(vmcs::host::CR3, self.paging_structures.as_ref() as *const _ as u64);
         vmwrite(vmcs::host::CR4, cr4().bits() as u64);
-        vmwrite(vmcs::host::TR_BASE, Self::segment_base(tr()));
-        vmwrite(vmcs::host::GDTR_BASE, gdtr.base as u64);
+        vmwrite(vmcs::host::TR_BASE, self.host_descriptors.tss.base);
+        vmwrite(vmcs::host::GDTR_BASE, self.host_descriptors.gdtr.base as u64);
         vmwrite(vmcs::host::IDTR_BASE, idtr.base as u64);
         vmwrite(
             vmcs::control::VMEXIT_CONTROLS,
@@ -318,18 +318,6 @@ impl Vm {
 
         assert!(value.trailing_zeros() >= 12);
         value | EPT_POINTER_PAGE_WALK_LENGTH_4 | EPT_POINTER_MEMORY_TYPE_WRITE_BACK
-    }
-
-    fn segment_base(selector: SegmentSelector) -> u64 {
-        let current_gdtr = sgdt();
-        let current_gdt = unsafe {
-            core::slice::from_raw_parts(
-                current_gdtr.base.cast::<u64>(),
-                usize::from(current_gdtr.limit + 1) / 8,
-            )
-        };
-        let descriptor = current_gdt[selector.index() as usize];
-        (descriptor >> 16 & 0xff_ffff) | (descriptor >> 32 & 0xff00_0000)
     }
 }
 
