@@ -9,6 +9,12 @@ use x86::{
 
 use crate::x86_instructions::sgdt;
 
+// UEFI does not set TSS in the GDT. This is incompatible to be both as VM and
+// hypervisor states. This struct supports creating a new GDT that does contain
+// the TSS.
+//
+// See: 27.2.3 Checks on Host Segment and Descriptor-Table Registers
+// See: 27.3.1.2 Checks on Guest Segment Registers
 pub(crate) struct Descriptors {
     gdt: Vec<u64>,
     pub(crate) gdtr: DescriptorTablePointer<u64>,
@@ -28,6 +34,7 @@ impl Default for Descriptors {
     }
 }
 impl Descriptors {
+    /// Creates a new GDT with TSS based on the current GDT.
     pub(crate) fn new_from_current() -> Self {
         // Get the current GDT.
         let current_gdtr = sgdt();
@@ -59,6 +66,7 @@ impl Descriptors {
         descriptors
     }
 
+    /// Creates a new GDT with TSS from scratch for the host.
     pub(crate) fn new_for_host() -> Self {
         let mut descriptors = Self::default();
 

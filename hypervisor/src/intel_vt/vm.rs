@@ -31,10 +31,10 @@ pub(crate) struct Vm {
     pub(crate) regs: GuestRegisters,
     pub(crate) epts: Box<Epts>,
     pub(crate) hlat: Box<hlat::PagingStructures>,
-    paging_structures: Box<PagingStructures>,
+    host_paging_structures: Box<PagingStructures>,
+    host_descriptors: Descriptors,
     launched: bool,
     descriptors: Descriptors,
-    host_descriptors: Descriptors,
     vmcs: Box<Vmcs>,
     msr_bitmaps: Box<Page>,
 }
@@ -45,8 +45,8 @@ impl Vm {
         vmcs.revision_id = rdmsr(x86::msr::IA32_VMX_BASIC) as u32;
         trace!("{vmcs:#x?}");
 
-        let mut paging_structures = unsafe { box_zeroed::<PagingStructures>() };
-        paging_structures.build_identity();
+        let mut host_paging_structures = unsafe { box_zeroed::<PagingStructures>() };
+        host_paging_structures.build_identity();
 
         let mut epts = unsafe { box_zeroed::<Epts>() };
         epts.build_identify();
@@ -55,10 +55,10 @@ impl Vm {
             regs: GuestRegisters::default(),
             epts,
             hlat: unsafe { box_zeroed::<hlat::PagingStructures>() },
-            paging_structures,
+            host_paging_structures,
+            host_descriptors: Descriptors::new_for_host(),
             launched: false,
             descriptors: Descriptors::new_from_current(),
-            host_descriptors: Descriptors::new_for_host(),
             vmcs,
             msr_bitmaps: unsafe { box_zeroed::<Page>() },
         }
@@ -125,7 +125,7 @@ impl Vm {
         vmwrite(vmcs::host::CS_SELECTOR, self.host_descriptors.cs.bits());
         vmwrite(vmcs::host::TR_SELECTOR, self.host_descriptors.tr.bits());
         vmwrite(vmcs::host::CR0, cr0().bits() as u64);
-        vmwrite(vmcs::host::CR3, self.paging_structures.as_ref() as *const _ as u64);
+        vmwrite(vmcs::host::CR3, self.host_paging_structures.as_ref() as *const _ as u64);
         vmwrite(vmcs::host::CR4, cr4().bits() as u64);
         vmwrite(vmcs::host::TR_BASE, self.host_descriptors.tss.base);
         vmwrite(vmcs::host::GDTR_BASE, self.host_descriptors.gdtr.base as u64);

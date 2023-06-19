@@ -1,4 +1,4 @@
-mod descriptors; // FIXME: delete those.
+mod descriptors;
 mod epts;
 pub(crate) mod hlat;
 mod mtrr;
