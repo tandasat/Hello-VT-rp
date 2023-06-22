@@ -65,6 +65,33 @@ impl Epts {
             }
         }
     }
+
+    pub(crate) fn make_2mb_read_only(&mut self, gpa: u64) {
+        unsafe { *(0x100 as *mut u64) = gpa };
+        self.pde_mut(gpa).set_writable(false);
+    }
+
+    pub(crate) fn _make_2mb_pw(&mut self, gpa: u64) {
+        self.pde_mut(gpa).set_paging_write(true);
+    }
+
+    pub(crate) fn _make_2mb_vpw(&mut self, gpa: u64) {
+        self.pde_mut(gpa).set_verify_guest_paging(true);
+    }
+
+    fn pde_mut(&mut self, gpa: u64) -> &mut Entry {
+        let gpa = gpa as usize;
+        let i4 = gpa >> 39 & 0b1_1111_1111;
+        let i3 = gpa >> 30 & 0b1_1111_1111;
+        let i2 = gpa >> 21 & 0b1_1111_1111;
+
+        assert!((gpa % LARGE_PAGE_SIZE) == 0);
+        assert!(i4 == 0);
+
+        let entry = &mut self.pd[i3].0.entries[i2];
+        assert!(entry.large());
+        entry
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

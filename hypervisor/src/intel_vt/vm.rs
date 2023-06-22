@@ -72,8 +72,10 @@ impl Vm {
     // Set the initial VM state from the current system state.
     #[allow(clippy::too_many_lines)]
     pub(crate) fn initialize(&mut self, regs: &GuestRegisters) {
-        let idtr = sidt();
+        self.epts
+            .make_2mb_read_only(self.hlat.as_ref() as *const _ as u64);
 
+        let idtr = sidt();
         self.regs = *regs;
 
         vmwrite(vmcs::guest::ES_SELECTOR, es().bits());
@@ -121,7 +123,7 @@ impl Vm {
 
         vmwrite(vmcs::guest::LINK_PTR_FULL, u64::MAX);
 
-        // Initialize the host part
+        // Initialize the host part.
         vmwrite(vmcs::host::CS_SELECTOR, self.host_descriptors.cs.bits());
         vmwrite(vmcs::host::TR_SELECTOR, self.host_descriptors.tr.bits());
         vmwrite(vmcs::host::CR0, cr0().bits() as u64);

@@ -4,13 +4,17 @@ use x86::current::paging::BASE_PAGE_SHIFT;
 use super::vm::{vmread, Vm};
 use crate::paging_structures::{Pd, Pdpt, Pml4, Pt};
 
-#[repr(C, align(4096))]
+#[repr(C, align(0x20_0000))]
 pub(crate) struct PagingStructures {
     pml4: Pml4,
     pdpt: Pdpt,
     pd: Pd,
     pt: Pt,
 }
+
+//
+const _: () = assert!(core::mem::size_of::<PagingStructures>() == 0x20_0000);
+
 impl PagingStructures {
     pub(crate) fn deactivate(&mut self) {
         for pml4e in &mut self.pml4.0.entries {
@@ -21,9 +25,9 @@ impl PagingStructures {
             pdpte.set_present(true);
             pdpte.set_restart(true);
         }
-        for pde2mb in &mut self.pd.0.entries {
-            pde2mb.set_present(true);
-            pde2mb.set_restart(true);
+        for pde in &mut self.pd.0.entries {
+            pde.set_present(true);
+            pde.set_restart(true);
         }
         for pte in &mut self.pt.0.entries {
             pte.set_present(true);
