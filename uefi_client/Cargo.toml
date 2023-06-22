@@ -1,0 +1,26 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "uefi_client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme.workspace = true
+forced-target = "x86_64-unknown-uefi"
+
+# no_std cannot support `cargo test` and `cargo bench`
+[[bin]]
+name = "uefi_client"
+test = false
+bench = false
+
+[dependencies]
+log = "0.4"
+uefi = "0.24"
+uefi-services = "0.21"
+x86 = "0.52"
