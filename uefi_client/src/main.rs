@@ -7,7 +7,10 @@ mod shell;
 
 use log::{error, info};
 use uefi::prelude::*;
-use x86::{cpuid::cpuid, msr::wrmsr};
+use x86::{
+    cpuid::cpuid,
+    msr::{rdmsr, wrmsr},
+};
 
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
@@ -34,6 +37,7 @@ fn enable_hfi(addr: u64) {
     assert!(addr.trailing_zeros() >= 12, "Address must be 4KB aligned");
 
     unsafe {
+        wrmsr(0x1b1, rdmsr(0x1b1) & !(1 << 26));
         wrmsr(0x17d0, addr | 1); // IA32_HW_FEEDBACK_PTR <= addr | Valid
         wrmsr(0x17d1, 1); // IA32_HW_FEEDBACK_CONFIG <= Enable
     };

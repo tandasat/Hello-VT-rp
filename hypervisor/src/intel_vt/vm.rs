@@ -168,6 +168,17 @@ impl Vm {
                     | IA32_VMX_PROCBASED_CTLS2_ENABLE_XSAVES_FLAG,
             ),
         );
+
+        fn write_protect(bitmap: &mut Page, msr: usize) {
+            assert!(msr < 0x2000);
+            let byte_offset = msr / 8 + 2048;
+            let byte = &mut bitmap.0[byte_offset];
+            let bit_pos_in_byte = msr % 8;
+            *byte |= 1 << bit_pos_in_byte;
+        }
+
+        write_protect(self.msr_bitmaps.as_mut(), 0x17d0);
+        write_protect(self.msr_bitmaps.as_mut(), 0x17d1);
         vmwrite(vmcs::control::MSR_BITMAPS_ADDR_FULL, self.msr_bitmaps.as_ref() as *const _ as u64);
         vmwrite(
             vmcs::control::EPTP_FULL,

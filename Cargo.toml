@@ -3,6 +3,7 @@ members = [
     "hypervisor",
     "xtask",
     "client",
+    #"uefi_client",
 ]
 resolver = "2"
 
