@@ -66,16 +66,16 @@ impl Epts {
         }
     }
 
-    pub(crate) fn make_2mb_read_only(&mut self, gpa: u64) {
+    pub(crate) fn make_2mb_ro(&mut self, gpa: u64) {
         unsafe { *(0x100 as *mut u64) = gpa };
         self.pde_mut(gpa).set_writable(false);
     }
 
-    pub(crate) fn _make_2mb_pw(&mut self, gpa: u64) {
+    pub(crate) fn make_2mb_pw(&mut self, gpa: u64) {
         self.pde_mut(gpa).set_paging_write(true);
     }
 
-    pub(crate) fn _make_2mb_vpw(&mut self, gpa: u64) {
+    pub(crate) fn make_2mb_gpv(&mut self, gpa: u64) {
         self.pde_mut(gpa).set_verify_guest_paging(true);
     }
 

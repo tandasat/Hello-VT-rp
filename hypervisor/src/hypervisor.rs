@@ -1,5 +1,6 @@
-use bitfield::bitfield;
 use log::{debug, info, trace};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use x86::{
     controlregs::{Cr4, Xcr0},
     cpuid::cpuid,
@@ -8,8 +9,7 @@ use x86::{
 
 use crate::{
     intel_vt::{
-        hlat::protect_la,
-        vm::{vmread, vmwrite, Vm, VmExitReason},
+        vm::{vmread, Vm, VmExitReason},
         vmx::Vmx,
     },
     x86_instructions::{cr4, cr4_write, rdmsr, wrmsr, xsetbv},
@@ -77,43 +77,11 @@ fn handle_rdmsr(vm: &mut Vm) {
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }
 
-bitfield! {
-    #[derive(Clone, Copy)]
-    pub struct VmEntryInterruptInfo(u32);
-    impl Debug;
-    pub vector, set_vector: 7, 0;
-    pub interrupt_type, set_interrupt_type: 10, 8;
-    pub delivery_error_code, set_delivery_error_code: 11;
-    pub valid, set_valid: 31;
-}
-
-#[repr(u8)]
-#[derive(Clone, Copy)]
-enum InterruptType {
-    HardwareInterrupt = 3,
-}
-
-fn inject_event(interrupt_type: InterruptType, vector: u8, error_code: Option<u32>) {
-    let mut intr_info = VmEntryInterruptInfo(0);
-    intr_info.set_vector(u32::from(vector));
-    intr_info.set_interrupt_type(interrupt_type as u32);
-    intr_info.set_delivery_error_code(error_code.is_some());
-    intr_info.set_valid(true);
-    vmwrite(0x00004016, intr_info.0);
-    if error_code.is_some() {
-        vmwrite(0x00004018, error_code.unwrap());
-    }
-}
-
 fn handle_wrmsr(vm: &mut Vm) {
     let msr = vm.regs.rcx as u32;
     let value = (vm.regs.rax & 0xffff_ffff) | ((vm.regs.rdx & 0xffff_ffff) << 32);
     info!("WRMSR {msr:#x?} {value:#x?}");
     wrmsr(msr, value);
-
-    if msr == 0x17d0 || msr == 0x17d1 {
-        inject_event(InterruptType::HardwareInterrupt, 12, Some(0));
-    }
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
 }
@@ -132,10 +100,31 @@ fn handle_xsetbv(vm: &mut Vm) {
 
 fn handle_vmcall(vm: &mut Vm) {
     if cfg!(feature = "enable_vt_rp") {
-        assert!(vm.regs.rcx == 0, "Only hypercall 0 is implemented");
-
-        protect_la(vm);
+        match FromPrimitive::from_u64(vm.regs.rcx) {
+            Some(Hypercall::ProtectLinearAddress) => vm.hlat.enable_hlat_for_4kb(vm.regs.rdx),
+            Some(Hypercall::MakeHvManagedTablesReadOnly) => {
+                vm.epts.make_2mb_ro(vm.hlat.as_ref() as *const _ as u64)
+            }
+            Some(Hypercall::MakeHvManagedTablesPagingWriteAccess) => {
+                vm.epts.make_2mb_pw(vm.hlat.as_ref() as *const _ as u64)
+            }
+            Some(Hypercall::MakeHvManagedTablesGuestPagingVerify) => {
+                vm.epts.make_2mb_gpv(vm.hlat.as_ref() as *const _ as u64)
+            }
+            None => panic!("{} is not a supported hypercall number", vm.regs.rcx),
+        }
+        vm.regs.rax = 0;
+    } else {
+        vm.regs.rax = u64::MAX;
     }
 
     vm.regs.rip += vmread(vmcs::ro::VMEXIT_INSTRUCTION_LEN);
+}
+
+#[derive(FromPrimitive)]
+enum Hypercall {
+    ProtectLinearAddress,
+    MakeHvManagedTablesReadOnly,
+    MakeHvManagedTablesPagingWriteAccess,
+    MakeHvManagedTablesGuestPagingVerify,
 }
