@@ -31,7 +31,7 @@ uefi-services = { version = "0.21", default-features = false, features = ["panic
 x86 = "0.52"
 
 [features]
-default = []
+default = ["enable_vt_rp"]
 
 # Enable VT-rp. Not compatible with VMware or Bochs.
 enable_vt_rp = []

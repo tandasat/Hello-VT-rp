@@ -2,16 +2,28 @@ use std::{arch::global_asm, env};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        println!("Specify a linear address to protect using HLAT.");
-        println!("eg, >client.exe 0 0x12345");
+    if args.len() == 1 {
+        println!("Specify a hypercall number and up to 3 parameters as needed.");
+        println!("  >{} <hypercall_number> [parameter [...]]", args[0]);
         return;
     }
 
-    let number = args[1].trim_start_matches("0x").parse::<u64>().unwrap();
-    let rdx = u64::from_str_radix(args[2].trim_start_matches("0x"), 16).unwrap();
-    let status_code = unsafe { vmcall(number, rdx, 0, 0) };
-    println!("VMCALL({number}, 0x{rdx:x?}): {status_code}");
+    let params: Vec<u64> = args
+        .iter()
+        .skip(1)
+        .map(|arg| {
+            u64::from_str_radix(arg.trim_start_matches("0x"), 16)
+                .unwrap_or_else(|_| panic!("'{arg}' cannot be converted to u64"))
+        })
+        .collect();
+
+    let number = params[0];
+    let rdx = *params.get(1).unwrap_or(&0);
+    let r8 = *params.get(2).unwrap_or(&0);
+    let r9 = *params.get(3).unwrap_or(&0);
+
+    let status_code = unsafe { vmcall(number, rdx, r8, r9) };
+    println!("VMCALL({number}, 0x{rdx:x?}, 0x{r8:x?}, 0x{r9:x?}) => 0x{status_code:x?}");
 }
 
 extern "C" {

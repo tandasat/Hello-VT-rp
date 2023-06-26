@@ -20,7 +20,5 @@ test = false
 bench = false
 
 [dependencies]
-log = "0.4"
 uefi = "0.24"
 uefi-services = "0.21"
-x86 = "0.52"
