@@ -71,7 +71,7 @@ impl Epts {
     }
 
     pub(crate) fn make_2mb_pw(&mut self, gpa: u64) {
-        self.pde_mut(gpa).set_paging_write(true);
+        self.pde_mut(gpa).set_paging_write_access(true);
     }
 
     pub(crate) fn make_2mb_gpv(&mut self, gpa: u64) {
@@ -123,5 +123,5 @@ bitfield! {
     large, set_large: 7;
     pfn, set_pfn: 51, 12;
     verify_guest_paging, set_verify_guest_paging: 57;
-    paging_write, set_paging_write: 58;
+    paging_write_access, set_paging_write_access: 58;
 }

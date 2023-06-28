@@ -20,5 +20,7 @@ test = false
 bench = false
 
 [dependencies]
+bitfield = "0.14"
 uefi = "0.24"
 uefi-services = "0.21"
+x86 = "0.52"

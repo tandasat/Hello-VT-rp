@@ -8,6 +8,7 @@ use uefi::{
 
 use crate::{hypervisor::start_hypervisor, GuestRegisters, Page};
 
+/// Installs the hypervisor on the current processor.
 pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: &SystemTable<Boot>) -> ! {
     let bs = system_table.boot_services();
     let loaded_image = bs
@@ -40,12 +41,11 @@ pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: &SystemTabl
     let stack_base = stack as u64 + layout.size() as u64 - 0x10;
     debug!("Stack range: {:#x?}", (stack_base..stack as u64));
 
-    // Jump into the "start_hypervisor" function with the new stack pointer.
     unsafe { switch_stack(regs, start_hypervisor as usize, stack_base) };
 }
 
 extern "efiapi" {
-    // Jumps to the landing code with the new stack pointer.
+    /// Jumps to the landing code with the new stack pointer.
     fn switch_stack(regs: &GuestRegisters, landing_code: usize, stack_base: u64) -> !;
 }
 global_asm!(include_str!("switch_stack.S"));

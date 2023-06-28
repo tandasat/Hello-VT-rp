@@ -27,11 +27,14 @@ num-derive = { version= "0.3", default-features= false }
 num-traits = { version= "0.2", default-features= false }
 spin = "0.9"
 uefi = "0.24"
+# The hypervisor is a runtime driver but the following features in the uefi-services
+# are boot-time only: the allocator and the panic handler. Neither of those
+# 'actively' causes an issue, so I opted it for the sake of smaller code.
 uefi-services = { version = "0.21", default-features = false, features = ["panic_handler"]}
 x86 = "0.52"
 
 [features]
 default = ["enable_vt_rp"]
 
-# Enable VT-rp. Not compatible with VMware or Bochs.
+# Enable VT-rp. Disable this for testing with VMware or Bochs.
 enable_vt_rp = []

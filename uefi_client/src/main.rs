@@ -3,12 +3,19 @@
 
 extern crate alloc;
 
+mod paging_structures;
 mod shell;
 
-use alloc::vec::Vec;
-use core::arch::global_asm;
+use alloc::{alloc::handle_alloc_error, vec::Vec};
+use core::{alloc::Layout, arch::global_asm};
 use uefi::prelude::*;
 use uefi_services::println;
+use x86::{
+    controlregs::{cr0, cr0_write, cr3, Cr0},
+    current::paging::BASE_PAGE_SHIFT,
+};
+
+use crate::paging_structures::{LargePage, Pd, Pdpt, Pml4};
 
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
@@ -18,7 +25,13 @@ fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     if args.len() == 1 {
         println!("Specify a hypercall number and up to 3 parameters as needed.");
         println!("  >{} <hypercall_number> [parameter [...]]", args[0]);
+        println!("  >{} alias <gpa>", args[0]);
         return Status::INVALID_PARAMETER;
+    }
+
+    if args[1] == "alias" {
+        demo_aliasing(u64::from_str_radix(args[2].trim_start_matches("0x"), 16).unwrap());
+        return Status::SUCCESS;
     }
 
     let params: Vec<u64> = args
@@ -36,8 +49,43 @@ fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let r9 = *params.get(3).unwrap_or(&0);
 
     let status_code = unsafe { vmcall(number, rdx, r8, r9) };
-    println!("VMCALL({number}, 0x{rdx:x?}, 0x{r8:x?}, 0x{r9:x?}) => 0x{status_code:x?}");
+    println!("VMCALL({number}, {rdx:#x?}, {r8:#x?}, {r9:#x?}) => {status_code:#x?}");
     Status::SUCCESS
+}
+
+fn demo_aliasing(gpa: u64) {
+    let layout = Layout::new::<LargePage>();
+    let alias_ptr = unsafe { alloc::alloc::alloc_zeroed(layout) };
+    if alias_ptr.is_null() {
+        handle_alloc_error(layout);
+    }
+
+    let alias = alias_ptr as usize;
+    let i4 = alias >> 39 & 0b1_1111_1111;
+    let i3 = alias >> 30 & 0b1_1111_1111;
+    let i2 = alias >> 21 & 0b1_1111_1111;
+
+    // Locate PML4e, PDPTe and PDe used to translate the LA of RuntimeServices.
+    let pml4 = (unsafe { cr3() } & !0xfff) as *mut Pml4;
+    let pml4 = unsafe { &mut *pml4 };
+    let pdpt = (pml4.0.entries[i4].pfn() << BASE_PAGE_SHIFT) as *mut Pdpt;
+    let pdpt = unsafe { &mut *pdpt };
+    let pd = (pdpt.0.entries[i3].pfn() << BASE_PAGE_SHIFT) as *mut Pd;
+    let pd = unsafe { &mut *pd };
+    let pde = &mut pd.0.entries[i2];
+    assert!(pde.large());
+
+    // Update the PFN of the leaf entry to point to the specified GPA. Disable
+    // write-protection as the paging structures are read-only on modern UEFI.
+    unsafe {
+        let cr0 = cr0();
+        cr0_write(cr0 & !Cr0::CR0_WRITE_PROTECT);
+        pde.set_pfn(gpa >> BASE_PAGE_SHIFT);
+        cr0_write(cr0);
+        x86::tlb::flush(alias);
+    }
+
+    println!("Aliased GPA {gpa:#x?} onto LA {alias_ptr:#x?}");
 }
 
 extern "C" {

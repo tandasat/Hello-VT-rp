@@ -4,6 +4,9 @@ use x86::current::paging::BASE_PAGE_SHIFT;
 use super::vm::vmread;
 use crate::paging_structures::{Pd, Pdpt, Pml4, Pt};
 
+// The hypervisor-managed paging structures. The alignment is set to translate
+// all those structures only with a single EPT PDe for simpler implementation
+// and demonstration.
 #[repr(C, align(0x20_0000))]
 pub(crate) struct PagingStructures {
     pml4: Pml4,
@@ -11,8 +14,6 @@ pub(crate) struct PagingStructures {
     pd: Pd,
     pt: Pt,
 }
-
-//
 const _: () = assert!(core::mem::size_of::<PagingStructures>() == 0x20_0000);
 
 impl PagingStructures {
@@ -36,7 +37,9 @@ impl PagingStructures {
     }
 
     #[allow(clippy::similar_names)]
-    pub(crate) fn enable_hlat_for_4kb(&mut self, la: u64) {
+    // Prevent aliasing for the given LA by enabling HLAT paging for it. Returns
+    // GPA corresponds to the given LA.
+    pub(crate) fn enable_hlat_for_4kb(&mut self, la: u64) -> u64 {
         let la = la as usize;
         let i4 = la >> 39 & 0b1_1111_1111;
         let i3 = la >> 30 & 0b1_1111_1111;
@@ -55,6 +58,9 @@ impl PagingStructures {
         let pd = unsafe { &*pd };
         let pde = &pd.0.entries[i2];
 
+        // Then, copy the guest entry values into the hypervisor-managed paging
+        // structure entries, clear the restart bit as OS may have used this bit,
+        // and update PFN to point to the next hypervisor-managed paging structures.
         self.pml4.0.entries[i4].0 = pml4e.0;
         self.pml4.0.entries[i4].set_restart(false);
         self.pml4.0.entries[i4].set_pfn(addr_of!(self.pdpt) as u64 >> BASE_PAGE_SHIFT);
@@ -64,7 +70,9 @@ impl PagingStructures {
         if pde.large() {
             self.pd.0.entries[i2].0 = pde.0;
             self.pd.0.entries[i2].set_restart(false);
+            self.pd.0.entries[i2].pfn() << BASE_PAGE_SHIFT
         } else {
+            // If it is not a large page, also process a PTe.
             let pt = (pde.pfn() << BASE_PAGE_SHIFT) as *const Pt;
             let pt = unsafe { &*pt };
             let pte = &pt.0.entries[i1];
@@ -74,6 +82,7 @@ impl PagingStructures {
             self.pd.0.entries[i2].set_pfn(addr_of!(self.pt) as u64 >> BASE_PAGE_SHIFT);
             self.pt.0.entries[i1].0 = pte.0;
             self.pt.0.entries[i1].set_restart(false);
+            self.pt.0.entries[i1].pfn() << BASE_PAGE_SHIFT
         }
     }
 }

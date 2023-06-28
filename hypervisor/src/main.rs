@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
 
@@ -52,6 +53,7 @@ fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     Status::SUCCESS
 }
 
+/// Checks if this hypervisor is already installed.
 fn is_hlat_hypervisor_present() -> bool {
     let regs = cpuid!(CPUID_VENDOR_AND_MAX_FUNCTIONS);
     (regs.ebx == regs.ecx) && (regs.ecx == regs.edx) && (regs.edx == HLAT_VENDOR_NAME)
