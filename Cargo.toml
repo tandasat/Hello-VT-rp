@@ -3,6 +3,10 @@ members = [
     "hypervisor",
     "xtask",
     "client",
+    # uefi_client must be compiled for EFI_APPLICATION but it will be built as
+    # EFI_RUNTIME_DRIVER becuase of .cargo/config.toml. To build this project
+    # proper, comment out the line with `rustflags` in the toml file and uncomment
+    # this.
     #"uefi_client",
 ]
 resolver = "2"
@@ -11,9 +15,9 @@ resolver = "2"
 version = "0.1.0"
 edition = "2021"
 authors = ["Satoshi Tanda <tanda.sat@gmail.com>"]
-description = "The research fuzzing hypervisor"
+description = "A simple hypervisor demonstrating the use of the Intel VT-rp (redirect protection) technology"
 license = "MIT"
-repository = "https://github.com/tandasat/Hypervisor-101-in-Rust"
-keywords = ["fuzzing", "UEFI", "hypervisor"]
+repository = "https://github.com/tandasat/Hello-VT-rp"
+keywords = ["VT-rp", "UEFI", "hypervisor"]
 categories = ["development-tools::testing", "no-std"]
 readme = "./README.md"

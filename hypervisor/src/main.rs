@@ -24,7 +24,7 @@ use crate::{
 #[entry]
 fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     init_uart_logger(log::LevelFilter::Debug).unwrap();
-    info!("hlat.efi loaded🔥");
+    info!("vt-rp.efi loaded🔥");
     uefi_services::init(&mut system_table).unwrap();
 
     if is_hlat_hypervisor_present() {

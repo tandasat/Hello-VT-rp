@@ -105,11 +105,11 @@ fn start_vm<T: TestVm>(vm: &T, release: bool) -> Result<(), DynError> {
 }
 
 fn build_hypervisor(release: bool) -> Result<(), DynError> {
-    // Building hlat only is important because we are running xtask, which cannot
+    // Building vt-rp only is important because we are running xtask, which cannot
     // be overwritten while running.
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let mut command = Command::new(cargo);
-    command.args(["build", "--package", "hlat"]);
+    command.args(["build", "--package", "vt-rp"]);
     if release {
         command.arg("--release");
     }
@@ -151,9 +151,9 @@ fn copy_artifacts_to(image: &str, release: bool) -> Result<(), DynError> {
         fs::canonicalize(&out_dir).unwrap()
     }
 
-    let hlat_efi = unix_path(&output_dir(release)) + "/hlat.efi";
+    let vtrp_efi = unix_path(&output_dir(release)) + "/vt-rp.efi";
     let startup_nsh = unix_path(&project_root_dir()) + "/tests/startup.nsh";
-    let files = [hlat_efi, startup_nsh];
+    let files = [vtrp_efi, startup_nsh];
     for file in &files {
         let output = UnixCommand::new("mcopy")
             .args(["-o", "-i", image, file, "::/"])

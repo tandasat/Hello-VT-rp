@@ -2,16 +2,16 @@ cargo-features = ["per-package-target"]
 
 [package]
 name = "uefi_client"
+description = "Demo client for a UEFI environment"
+forced-target = "x86_64-unknown-uefi"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description.workspace = true
 license.workspace = true
 repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 readme.workspace = true
-forced-target = "x86_64-unknown-uefi"
 
 # no_std cannot support `cargo test` and `cargo bench`
 [[bin]]

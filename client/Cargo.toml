@@ -1,9 +1,9 @@
 [package]
 name = "client"
+description = "Demo client for an OS environment"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description.workspace = true
 license.workspace = true
 repository.workspace = true
 keywords.workspace = true

@@ -1,21 +1,21 @@
 cargo-features = ["per-package-target"]
 
 [package]
-name = "hlat"
+name = "vt-rp"
+description = "A simple hypervisor demonstrating the use of the Intel VT-rp technology"
+forced-target = "x86_64-unknown-uefi"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description = "A simple hypervisor demonstrating the use of the Intel VT-rp technology"
 license.workspace = true
 repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 readme.workspace = true
-forced-target = "x86_64-unknown-uefi"
 
 # no_std cannot support `cargo test` and `cargo bench`
 [[bin]]
-name = "hlat"
+name = "vt-rp"
 test = false
 bench = false
 
