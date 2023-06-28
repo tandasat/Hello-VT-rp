@@ -184,7 +184,9 @@ impl Vm {
                 VMCS_CTRL_TERTIARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
                 Self::adjust_vmx_control(
                     VmxControl::ProcessorBased3,
-                    IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG,
+                    IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG
+                        | IA32_VMX_PROCBASED_CTLS3_EPT_PAGING_WRITE_CONTROL_FLAG
+                        | IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG,
                 ),
             );
             vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
@@ -418,8 +420,8 @@ const IA32_VMX_PROCBASED_CTLS2_ENABLE_XSAVES_FLAG: u64 = 1 << 20;
 // See: Table 25-8. Definitions of Tertiary Processor-Based VM-Execution
 // Controls
 const IA32_VMX_PROCBASED_CTLS3_ENABLE_HLAT_FLAG: u64 = 1 << 1;
-const _IA32_VMX_PROCBASED_CTLS3_EPT_PAGING_WRITE_CONTROL_FLAG: u64 = 1 << 2;
-const _IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG: u64 = 1 << 3;
+const IA32_VMX_PROCBASED_CTLS3_EPT_PAGING_WRITE_CONTROL_FLAG: u64 = 1 << 2;
+const IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG: u64 = 1 << 3;
 
 // See: Table 25-13. Definitions of Primary VM-Exit Controls
 const IA32_VMX_EXIT_CTLS_HOST_ADDRESS_SPACE_SIZE_FLAG: u64 = 1 << 9;

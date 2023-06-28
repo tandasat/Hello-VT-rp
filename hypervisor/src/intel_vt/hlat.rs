@@ -54,10 +54,6 @@ impl PagingStructures {
         let pd = (pdpte.pfn() << BASE_PAGE_SHIFT) as *const Pd;
         let pd = unsafe { &*pd };
         let pde = &pd.0.entries[i2];
-        assert!(!pde.large());
-        let pt = (pde.pfn() << BASE_PAGE_SHIFT) as *const Pt;
-        let pt = unsafe { &*pt };
-        let pte = &pt.0.entries[i1];
 
         self.pml4.0.entries[i4].0 = pml4e.0;
         self.pml4.0.entries[i4].set_restart(false);
@@ -65,10 +61,19 @@ impl PagingStructures {
         self.pdpt.0.entries[i3].0 = pdpte.0;
         self.pdpt.0.entries[i3].set_restart(false);
         self.pdpt.0.entries[i3].set_pfn(addr_of!(self.pd) as u64 >> BASE_PAGE_SHIFT);
-        self.pd.0.entries[i2].0 = pde.0;
-        self.pd.0.entries[i2].set_restart(false);
-        self.pd.0.entries[i2].set_pfn(addr_of!(self.pt) as u64 >> BASE_PAGE_SHIFT);
-        self.pt.0.entries[i1].0 = pte.0;
-        self.pt.0.entries[i1].set_restart(false);
+        if pde.large() {
+            self.pd.0.entries[i2].0 = pde.0;
+            self.pd.0.entries[i2].set_restart(false);
+        } else {
+            let pt = (pde.pfn() << BASE_PAGE_SHIFT) as *const Pt;
+            let pt = unsafe { &*pt };
+            let pte = &pt.0.entries[i1];
+
+            self.pd.0.entries[i2].0 = pde.0;
+            self.pd.0.entries[i2].set_restart(false);
+            self.pd.0.entries[i2].set_pfn(addr_of!(self.pt) as u64 >> BASE_PAGE_SHIFT);
+            self.pt.0.entries[i1].0 = pte.0;
+            self.pt.0.entries[i1].set_restart(false);
+        }
     }
 }

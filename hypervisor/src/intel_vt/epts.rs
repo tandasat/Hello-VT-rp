@@ -67,7 +67,6 @@ impl Epts {
     }
 
     pub(crate) fn make_2mb_ro(&mut self, gpa: u64) {
-        unsafe { *(0x100 as *mut u64) = gpa };
         self.pde_mut(gpa).set_writable(false);
     }
 
