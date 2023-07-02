@@ -23,10 +23,10 @@ NB:
 ## Paging Write (PW)
 
 1. Enable PW by setting the "EPT paging-write control" bit in the tertiary processor-based VM-execution controls. See [`intel_vt::vm::Vm::initialize`].
-2. On VMCALL 2, locate the leaf EPT entry that corresponds to the GPA of the hypevisor-managed paging structures and set the "paging-write access" bit in the entry. See [`intel_vt::epts::Epts::make_2mb_pw`].
+2. On VMCALL 2, locate the leaf EPT entry that corresponds to the GPA of the hypervisor-managed paging structures and set the "paging-write access" bit in the entry. See [`intel_vt::epts::Epts::make_2mb_pw`].
 
 
 ## Guest-Paging Verification (GPV)
 
 1. Enable GPV by setting the "Guest-paging verification" bit in the tertiary processor-based VM-execution controls. See [`intel_vt::vm::Vm::initialize`].
-2. On VMCALL 3, set the "verify guest paging" bit in the leaf EPT entry that corresponds to the GPA protected by HLAT, and then, set the "paging-write access" bit in leaf EPT entry that corresponds to the GPA of the hypevisor-managed paging structures.
+2. On VMCALL 3, set the "verify guest paging" bit in the leaf EPT entry that corresponds to the GPA protected by HLAT, and then, set the "paging-write access" bit in leaf EPT entry that corresponds to the GPA of the hypervisor-managed paging structures.

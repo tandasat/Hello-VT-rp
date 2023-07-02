@@ -69,7 +69,7 @@ impl Vmx {
 
         // If the lock bit is cleared, set it along with the VMXON-outside-SMX
         // operation bit. Without those two bits, the VMXON instruction fails. They
-        // are normally set but not always, for example, Bochs with OVFM does not.
+        // are normally set but not always, for example, Bochs with OVMF does not.
         // See: 23.7 ENABLING AND ENTERING VMX OPERATION
         let feature_control = rdmsr(x86::msr::IA32_FEATURE_CONTROL);
         if (feature_control & IA32_FEATURE_CONTROL_LOCK_BIT_FLAG) == 0 {

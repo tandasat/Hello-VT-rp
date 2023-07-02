@@ -20,12 +20,12 @@ pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: &SystemTabl
     debug!("Image range: {image_range:#x?}");
 
     // Prevent relocation by zapping the Relocation Table in the PE header. UEFI
-    // keeps the list of runtime drivers and applyies patches into their code and
+    // keeps the list of runtime drivers and applies patches into their code and
     // data according with relocation information, as address translation switches
     // from physical-mode to virtual-mode when the OS starts. This causes a problem
     // with us because the host part keeps running under physical-mode, as the
     // host has its own page tables. Relocation ends up breaking the host code.
-    // The easiest way is prevent this from happning is to nullify the relocation
+    // The easiest way is prevent this from happening is to nullify the relocation
     // table.
     unsafe {
         *((image_base + 0x128) as *mut u32) = 0;

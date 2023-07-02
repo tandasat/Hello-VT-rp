@@ -103,7 +103,7 @@ fn handle_vmcall(vm: &mut Vm) {
     if cfg!(feature = "enable_vt_rp") {
         match FromPrimitive::from_u64(vm.regs.rcx) {
             Some(Hypercall::BlockRemappingLa) => {
-                // Prevent remapping the specified LA by enaling HLAT paging.
+                // Prevent remapping the specified LA by enabling HLAT paging.
                 // Save GPA of the protected LA.
                 vm.gpa = Some(vm.hlat.enable_hlat_for_4kb(vm.regs.rdx))
             }

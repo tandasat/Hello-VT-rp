@@ -4,7 +4,7 @@ members = [
     "xtask",
     "client",
     # uefi_client must be compiled for EFI_APPLICATION but it will be built as
-    # EFI_RUNTIME_DRIVER becuase of .cargo/config.toml. To build this project
+    # EFI_RUNTIME_DRIVER because of .cargo/config.toml. To build this project
     # proper, comment out the line with `rustflags` in the toml file and uncomment
     # this.
     #"uefi_client",
