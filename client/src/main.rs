@@ -23,7 +23,9 @@ fn main() {
     let r9 = *params.get(3).unwrap_or(&0);
 
     let status_code = unsafe { vmcall(number, rdx, r8, r9) };
-    println!("VMCALL({number}, {rdx:#x?}, {r8:#x?}, {r9:#x?}) => {status_code:#x?}");
+    if status_code != 0 {
+        println!("VMCALL({number}, {rdx:#x?}, {r8:#x?}, {r9:#x?}) => {status_code:#x?}");
+    }
 }
 
 extern "C" {
