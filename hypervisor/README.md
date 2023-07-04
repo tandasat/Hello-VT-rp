@@ -17,7 +17,7 @@ This document summarizes how this hypervisor enables each VT-rp features.
 
 NB:
 - Normally, the hypervisor-managed paging structures should be mapped in GPA with the read-only permission. It is not done by default for demonstration.
-- When the hypervisor-managed paging structures are modified, translation caches (eg, TLB) must be invalidated. It is not done explicitly as this project does not enable VPID, and thus, all translation caches are invalidated on VM-exit and -entry.
+- When the hypervisor-managed paging structures are modified, translation caches (eg, TLB) must be invalidated with `INVVPID`. This is not done in this project as we do not enable VPID, and thus, all translation caches are invalidated on VM-exit and -entry.
 
 
 ## Paging Write (PW)
