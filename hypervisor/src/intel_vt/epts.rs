@@ -32,6 +32,8 @@ impl Epts {
             pdpte.set_pfn(addr_of!(self.pd[i]) as u64 >> BASE_PAGE_SHIFT);
             for pde in &mut self.pd[i].0.entries {
                 if pa == 0 {
+                    // First 2MB is managed by 4KB EPT PTs so MTRR memory types
+                    // are properly reflected into the EPT memory memory types.
                     pde.set_readable(true);
                     pde.set_writable(true);
                     pde.set_executable(true);
@@ -49,6 +51,9 @@ impl Epts {
                         pa += PAGE_SIZE as u64;
                     }
                 } else {
+                    // For the rest of GPAes, manage them with 2MB large page EPTs.
+                    // We assume MTRR memory types are configured for 2MB or greater
+                    // granularity.
                     let memory_type =
                         mtrr.find(pa..pa + LARGE_PAGE_SIZE as u64)
                             .unwrap_or_else(|| {
@@ -70,7 +75,7 @@ impl Epts {
         self.pde_mut(gpa).set_writable(false);
     }
 
-    pub(crate) fn make_2mb_pw(&mut self, gpa: u64) {
+    pub(crate) fn make_2mb_pwa(&mut self, gpa: u64) {
         self.pde_mut(gpa).set_paging_write_access(true);
     }
 

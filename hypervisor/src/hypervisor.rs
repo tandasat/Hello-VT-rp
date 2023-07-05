@@ -116,14 +116,14 @@ fn handle_vmcall(vm: &mut Vm) {
                 // Enable PW for the hypervisor-managed paging structures so that
                 // even if they are marked as read-only, the processor can set
                 // "dirty" and "accessed" bits during page walk.
-                vm.epts.make_2mb_pw(vm.hlat.as_ref() as *const _ as u64);
+                vm.epts.make_2mb_pwa(vm.hlat.as_ref() as *const _ as u64);
             }
             Some(Hypercall::BlockAliasingGpa) => {
                 // Prevent aliasing the HLAT protected GPA by enabling GPV. Then,
                 // enable PW for the hypervisor-managed paging structures so that
                 // the GPA can still be translated with them (but only with them).
                 vm.epts.make_2mb_gpv(vm.gpa.expect("HLAT is enabled"));
-                vm.epts.make_2mb_pw(vm.hlat.as_ref() as *const _ as u64);
+                vm.epts.make_2mb_pwa(vm.hlat.as_ref() as *const _ as u64);
             }
             None => panic!("{} is not a supported hypercall number", vm.regs.rcx),
         }
