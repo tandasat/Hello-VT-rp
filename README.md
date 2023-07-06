@@ -2,7 +2,7 @@
 
 A simple hypervisor demonstrating the use of the Intel VT-rp (redirect protection) technology.
 
-This repository is a complement of the blob post, [TODO](TODO), and is not meant for general use. For the details of Intel VT-rp, please read the post.
+This repository is a complement of the [Intel VT-rp blog post series](https://tandasat.github.io/blog/2023/07/05/intel-vt-rp-part-1.html) and not meant for a general use. For the overview of Intel VT-rp, please read the post.
 
 
 ## The hypervisor
