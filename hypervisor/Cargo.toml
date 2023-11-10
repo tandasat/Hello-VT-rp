@@ -26,11 +26,11 @@ log = "0.4"
 num-derive = { version= "0.4", default-features= false }
 num-traits = { version= "0.2", default-features= false }
 spin = "0.9"
-uefi = "0.24"
+uefi = "0.25"
 # The hypervisor is a runtime driver but the following features in the uefi-services
 # are boot-time only: the allocator and the panic handler. Neither of those
 # 'actively' causes an issue, so I opted it for the sake of smaller code.
-uefi-services = { version = "0.21", default-features = false, features = ["panic_handler"]}
+uefi-services = { version = "0.22", default-features = false, features = ["panic_handler"]}
 x86 = "0.52"
 
 [features]
