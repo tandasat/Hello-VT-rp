@@ -34,7 +34,6 @@ pub(crate) struct Vm {
     pub(crate) gpa: Option<u64>,
     host_paging_structures: Box<PagingStructures>,
     host_descriptors: Descriptors,
-    launched: bool,
     descriptors: Descriptors,
     vmcs: Box<Vmcs>,
     msr_bitmaps: Box<Page>,
@@ -59,7 +58,6 @@ impl Vm {
             gpa: None,
             host_paging_structures,
             host_descriptors: Descriptors::new_for_host(),
-            launched: false,
             descriptors: Descriptors::new_from_current(),
             vmcs,
             msr_bitmaps: unsafe { box_zeroed::<Page>() },
@@ -209,12 +207,11 @@ impl Vm {
 
         // Execute the VM until VM-exit occurs.
         trace!("Entering the VM");
-        let flags = unsafe { run_vmx_vm(&mut self.regs, u64::from(self.launched)) };
+        let flags = unsafe { run_vmx_vm(&mut self.regs) };
         trace!("Exited the VM");
         if let Err(err) = vm_succeed(RFlags::from_raw(flags)) {
             panic!("{err}");
         }
-        self.launched = true;
         self.regs.rip = vmread(vmcs::guest::RIP);
         self.regs.rsp = vmread(vmcs::guest::RSP);
         self.regs.rflags = vmread(vmcs::guest::RFLAGS);
@@ -345,7 +342,7 @@ enum VmxControl {
 
 extern "efiapi" {
     /// Runs the VM until VM-exit occurs.
-    fn run_vmx_vm(registers: &mut GuestRegisters, launched: u64) -> u64;
+    fn run_vmx_vm(registers: &mut GuestRegisters) -> u64;
 }
 global_asm!(include_str!("run_vmx_vm.S"));
 

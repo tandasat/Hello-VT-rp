@@ -41,7 +41,7 @@
 ;// Note that state switch implemented here is not complete, and some register
 ;// values are "leaked" to the other side, for example, XMM registers.
 ;//
-;// extern "efiapi" fn run_vmx_vm(registers: &mut GuestRegisters, launched: u64) -> u64;
+;// extern "efiapi" fn run_vmx_vm(registers: &mut GuestRegisters) -> u64;
 .global run_vmx_vm
 run_vmx_vm:
     xchg    bx, bx
@@ -63,13 +63,12 @@ run_vmx_vm:
     push    r14
     push    r15
 
-    ;// Copy `registers` and `launched` for using them. Also, save
-    ;// `registers` at the top of stack so that after VM-exit, we can find it.
+    ;// Copy `registers` for use. Then, save it at the top of stack so that after
+    ;// VM-exit, we can find it.
     mov     r15, rcx    ;// r15 <= `registers`
-    mov     r14, rdx    ;// r14 <= `launched`
     push    rcx         ;// [rsp] <= `registers`
 
-    ;// Restore guest general purpose registers from `registers`.
+    ;// Restore guest general purpose registers from `registers` and try VMRESUME.
     mov     rax, [r15 + registers_rax]
     mov     rbx, [r15 + registers_rbx]
     mov     rcx, [r15 + registers_rcx]
@@ -82,37 +81,40 @@ run_vmx_vm:
     mov     r10, [r15 + registers_r10]
     mov     r11, [r15 + registers_r11]
     mov     r12, [r15 + registers_r12]
-
-    ;// If `launched` is false, go to Launch.
-    test    r14, r14
-    je      .Launch
-
-    ;// Otherwise, restore the rest of the guest general purpose registers and
-    ;// run the guest until VM-exit occurs.
     mov     r13, [r15 + registers_r13]
     mov     r14, [r15 + registers_r14]
     mov     r15, [r15 + registers_r15]
     vmresume
+    pushf               ;// Save flags on stack as next VMREAD will overwrite it
+
+    ;// If the failure is due to "VMRESUME with non-launched VMCS" (5), continue
+    ;// and perform VMLAUNCH instead. It occurs on the first time.
+    mov     r15, 0x4400 ;// VM-instruction error
+    vmread  r15, r15
+    cmp     r15, 5
+    jz      .Launch
+    popf                ;// Restore flags from stack
     jmp     .VmEntryFailure
 
 .Launch:
+    pop     r15         ;// Discoard flags from stack
     ;// The VM has never launched with the current VMCS. Configure the host RSP
     ;// and RIP first. Then, restore the rest of guest general purpose registers
     ;// and run the guest until VM-exit occurs.
     xchg    bx, bx
-    mov     r14, 0x6C14 ;// VMCS_HOST_RSP
-    vmwrite r14, rsp
-    lea     r13, [rip + .VmExit]
-    mov     r14, 0x6C16 ;// VMCS_HOST_RIP
-    vmwrite r14, r13
-    mov     r13, [r15 + registers_r13]
+    mov     r15, 0x6C14 ;// Host RSP
+    vmwrite r15, rsp
+    lea     r14, [rip + .VmExit]
+    mov     r15, 0x6C16 ;// Host RIP
+    vmwrite r15, r14
+    mov     r15, [rsp]  ;// r15 <= `registers`
     mov     r14, [r15 + registers_r14]
     mov     r15, [r15 + registers_r15]
     vmlaunch
 
 .VmEntryFailure:
     ;// VMLAUNCH or VMRESUME failed. If it were successful, VM-exit should have
-    ;// led to "VmExit" not here.
+    ;// led to "VmExit", not here.
     jmp     .Exit
 
 .VmExit:
