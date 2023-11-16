@@ -67,7 +67,7 @@ impl TestVm for Vmware {
         };
 
         // Stop the VM if requested. This is best effort and failures are ignored.
-        Command::new(vmrun)
+        let _unused = Command::new(vmrun)
             .args(["stop", vmx_path.as_str(), "nogui"])
             .output()?;
 
@@ -100,7 +100,7 @@ impl TestVm for Vmware {
             thread::sleep(Duration::from_secs(1));
         }
 
-        thread::spawn(|| {
+        let _unused = thread::spawn(|| {
             let output = UnixCommand::new("tail")
                 .args(["-f", "/tmp/serial.log"])
                 .stdin(Stdio::piped())
@@ -127,7 +127,7 @@ impl TestVm for Vmware {
 
         // Stop the VM if requested. This is best effort and failures are ignored.
         println!("🕒 Shutting down the VM");
-        Command::new(vmrun)
+        let _unused = Command::new(vmrun)
             .args(["stop", vmx_path.as_str(), "nogui"])
             .output()?;
 

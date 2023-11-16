@@ -68,9 +68,9 @@ fn build_hypervisor(release: bool) -> Result<(), DynError> {
     // be overwritten while running.
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let mut command = Command::new(cargo);
-    command.args(["build", "--package", "vt-rp"]);
+    let _ = command.args(["build", "--package", "vt-rp"]);
     if release {
-        command.arg("--release");
+        let _ = command.arg("--release");
     }
     let ok = command.current_dir(project_root_dir()).status()?.success();
     if !ok {
