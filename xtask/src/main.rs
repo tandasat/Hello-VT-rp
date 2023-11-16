@@ -3,47 +3,6 @@
 //! ```shell
 //! cargo xtask
 //! ```
-
-#![warn(
-    // groups: https://doc.rust-lang.org/rustc/lints/groups.html
-    future_incompatible,
-    let_underscore,
-    nonstandard_style,
-    rust_2018_compatibility,
-    rust_2018_idioms,
-    rust_2021_compatibility,
-    unused,
-
-    // warnings that are not enabled by default or covered by groups
-    // https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
-    macro_use_extern_crate,
-    meta_variable_misuse,
-    missing_abi,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs,
-    non_ascii_idents,
-    noop_method_call,
-    single_use_lifetimes,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_op_in_unsafe_fn,
-    unused_crate_dependencies,
-    unused_import_braces,
-    unused_lifetimes,
-    unused_qualifications,
-  //unused_results,
-
-    // https://github.com/rust-lang/rust-clippy/blob/master/README.md
-    clippy::pedantic,
-    clippy::cargo,
-
-    // https://doc.rust-lang.org/rustdoc/lints.html
-    rustdoc::missing_crate_level_docs,
-    rustdoc::private_doc_tests,
-    rustdoc::invalid_html_tags,
-)]
-
 use bochs::{Bochs, Cpu};
 use clap::{Parser, Subcommand};
 use std::{

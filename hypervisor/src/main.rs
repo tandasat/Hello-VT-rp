@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 #![no_std]
-#![warn(clippy::pedantic, clippy::cargo)]
 #![allow(clippy::cast_possible_truncation)]
 
 extern crate alloc;
