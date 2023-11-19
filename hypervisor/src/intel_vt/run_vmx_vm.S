@@ -97,7 +97,7 @@ run_vmx_vm:
     jmp     .VmEntryFailure
 
 .Launch:
-    pop     r15         ;// Discoard flags from stack
+    pop     r15         ;// Discard flags from stack
     ;// The VM has never launched with the current VMCS. Configure the host RSP
     ;// and RIP first. Then, restore the rest of guest general purpose registers
     ;// and run the guest until VM-exit occurs.
