@@ -84,17 +84,38 @@ impl Vm {
         vmwrite(vmcs::guest::TR_SELECTOR, self.descriptors.tr.bits());
         vmwrite(vmcs::guest::LDTR_SELECTOR, 0u16);
 
-        vmwrite(vmcs::guest::ES_ACCESS_RIGHTS, Self::access_rights_from_native(lar(es())));
-        vmwrite(vmcs::guest::CS_ACCESS_RIGHTS, Self::access_rights_from_native(lar(cs())));
-        vmwrite(vmcs::guest::SS_ACCESS_RIGHTS, Self::access_rights_from_native(lar(ss())));
-        vmwrite(vmcs::guest::DS_ACCESS_RIGHTS, Self::access_rights_from_native(lar(ds())));
-        vmwrite(vmcs::guest::FS_ACCESS_RIGHTS, Self::access_rights_from_native(lar(fs())));
-        vmwrite(vmcs::guest::GS_ACCESS_RIGHTS, Self::access_rights_from_native(lar(gs())));
+        vmwrite(
+            vmcs::guest::ES_ACCESS_RIGHTS,
+            Self::access_rights_from_native(lar(es())),
+        );
+        vmwrite(
+            vmcs::guest::CS_ACCESS_RIGHTS,
+            Self::access_rights_from_native(lar(cs())),
+        );
+        vmwrite(
+            vmcs::guest::SS_ACCESS_RIGHTS,
+            Self::access_rights_from_native(lar(ss())),
+        );
+        vmwrite(
+            vmcs::guest::DS_ACCESS_RIGHTS,
+            Self::access_rights_from_native(lar(ds())),
+        );
+        vmwrite(
+            vmcs::guest::FS_ACCESS_RIGHTS,
+            Self::access_rights_from_native(lar(fs())),
+        );
+        vmwrite(
+            vmcs::guest::GS_ACCESS_RIGHTS,
+            Self::access_rights_from_native(lar(gs())),
+        );
         vmwrite(
             vmcs::guest::TR_ACCESS_RIGHTS,
             Self::access_rights_from_native(self.descriptors.tss.ar),
         );
-        vmwrite(vmcs::guest::LDTR_ACCESS_RIGHTS, Self::access_rights_from_native(0u32));
+        vmwrite(
+            vmcs::guest::LDTR_ACCESS_RIGHTS,
+            Self::access_rights_from_native(0u32),
+        );
 
         vmwrite(vmcs::guest::ES_LIMIT, lsl(es()));
         vmwrite(vmcs::guest::CS_LIMIT, lsl(cs()));
@@ -124,10 +145,16 @@ impl Vm {
         vmwrite(vmcs::host::CS_SELECTOR, self.host_descriptors.cs.bits());
         vmwrite(vmcs::host::TR_SELECTOR, self.host_descriptors.tr.bits());
         vmwrite(vmcs::host::CR0, cr0().bits() as u64);
-        vmwrite(vmcs::host::CR3, self.host_paging_structures.as_ref() as *const _ as u64);
+        vmwrite(
+            vmcs::host::CR3,
+            self.host_paging_structures.as_ref() as *const _ as u64,
+        );
         vmwrite(vmcs::host::CR4, cr4().bits() as u64);
         vmwrite(vmcs::host::TR_BASE, self.host_descriptors.tss.base);
-        vmwrite(vmcs::host::GDTR_BASE, self.host_descriptors.gdtr.base as u64);
+        vmwrite(
+            vmcs::host::GDTR_BASE,
+            self.host_descriptors.gdtr.base as u64,
+        );
         vmwrite(vmcs::host::IDTR_BASE, u64::MAX); // Bogus. No proper exception handling.
         vmwrite(
             vmcs::control::VMEXIT_CONTROLS,
@@ -165,7 +192,10 @@ impl Vm {
                     | IA32_VMX_PROCBASED_CTLS2_ENABLE_XSAVES_FLAG,
             ),
         );
-        vmwrite(vmcs::control::MSR_BITMAPS_ADDR_FULL, self.msr_bitmaps.as_ref() as *const _ as u64);
+        vmwrite(
+            vmcs::control::MSR_BITMAPS_ADDR_FULL,
+            self.msr_bitmaps.as_ref() as *const _ as u64,
+        );
         vmwrite(
             vmcs::control::EPTP_FULL,
             Self::eptp_from_nested_cr3(self.epts.as_ref() as *const _ as u64),
@@ -189,7 +219,10 @@ impl Vm {
                         | IA32_VMX_PROCBASED_CTLS3_GUEST_PAGING_VERIFICATION_FLAG,
                 ),
             );
-            vmwrite(VMCS_CTRL_HLAT_POINTER, self.hlat.as_ref() as *const _ as u64);
+            vmwrite(
+                VMCS_CTRL_HLAT_POINTER,
+                self.hlat.as_ref() as *const _ as u64,
+            );
             self.hlat.deactivate();
         }
     }
@@ -223,7 +256,10 @@ impl Vm {
             VMX_EXIT_REASON_RDMSR => VmExitReason::Rdmsr,
             VMX_EXIT_REASON_WRMSR => VmExitReason::Wrmsr,
             VMX_EXIT_REASON_XSETBV => VmExitReason::XSetBv,
-            _ => panic!("Unhandled VM-exit reason: {:?}", vmread(vmcs::ro::EXIT_REASON)),
+            _ => panic!(
+                "Unhandled VM-exit reason: {:?}",
+                vmread(vmcs::ro::EXIT_REASON)
+            ),
         }
     }
 
@@ -396,7 +432,10 @@ where
 fn vm_succeed(flags: RFlags) -> Result<(), String> {
     if flags.contains(RFlags::FLAGS_ZF) {
         // See: 31.4 VM INSTRUCTION ERROR NUMBERS
-        Err(format!("VmFailValid with {}", vmread(vmcs::ro::VM_INSTRUCTION_ERROR)))
+        Err(format!(
+            "VmFailValid with {}",
+            vmread(vmcs::ro::VM_INSTRUCTION_ERROR)
+        ))
     } else if flags.contains(RFlags::FLAGS_CF) {
         Err("VmFailInvalid".to_string())
     } else {

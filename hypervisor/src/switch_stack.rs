@@ -39,7 +39,7 @@ pub(crate) fn virtualize_system(regs: &GuestRegisters, system_table: &SystemTabl
         handle_alloc_error(layout);
     }
     let stack_base = stack as u64 + layout.size() as u64 - 0x10;
-    debug!("Stack range: {:#x?}", (stack_base..stack as u64));
+    debug!("Stack range: {:#x?}", (stack as u64..stack_base));
 
     unsafe { switch_stack(regs, start_hypervisor as usize, stack_base) };
 }

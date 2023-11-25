@@ -1,4 +1,4 @@
-use crate::{copy_artifacts_to, DynError, TestVm, UnixCommand};
+use crate::DynError;
 use std::{
     env,
     fs::{self},
@@ -9,6 +9,8 @@ use std::{
     thread,
     time::{Duration, SystemTime},
 };
+
+use super::{copy_artifacts_to, TestVm, UnixCommand};
 
 pub(crate) struct Vmware {}
 
@@ -73,7 +75,7 @@ impl TestVm for Vmware {
 
         // If the serial output file exists, delete it to avoid a popup
         let log_file = if cfg!(target_os = "windows") {
-            r"\\wsl$\Ubuntu-22.04\tmp\serial.log"
+            r"\\wsl$\Ubuntu\tmp\serial.log"
         } else {
             "/tmp/serial.log"
         };
@@ -90,8 +92,9 @@ impl TestVm for Vmware {
         };
         let output = Command::new(vmrun)
             .args(["-T", product_type, "start", vmx_path.as_str()])
-            .output()?;
-        if !output.status.success() {
+            .spawn()?
+            .wait()?;
+        if !output.success() {
             Err(format!("vmrun failed: {output:#?}"))?;
         }
 
@@ -116,7 +119,10 @@ impl TestVm for Vmware {
                 .lines()
                 .map_while(std::result::Result::ok)
                 .for_each(|line| {
-                    println!("{:>4}: {line}\r", now.elapsed().unwrap_or_default().as_secs());
+                    println!(
+                        "{:>4}: {line}\r",
+                        now.elapsed().unwrap_or_default().as_secs()
+                    );
                 });
         });
 
@@ -153,7 +159,7 @@ fn windows_path(path: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::vmware::windows_path;
+    use crate::vmtest::vmware::windows_path;
 
     #[test]
     fn test_windows_path() {
@@ -161,7 +167,7 @@ mod tests {
             assert_eq!(windows_path(r"C:\"), r"C:\");
             assert_eq!(windows_path("/mnt/c/tmp"), "/mnt/c/tmp");
         } else {
-            assert_eq!(windows_path("/tmp"), r"\\wsl.localhost\Ubuntu-22.04\tmp");
+            assert_eq!(windows_path("/tmp"), r"\\wsl.localhost\Ubuntu\tmp");
         }
     }
 }

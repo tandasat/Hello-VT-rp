@@ -90,6 +90,17 @@ fn demo_aliasing(gpa: u64) {
     println!("Aliased GPA {gpa:#x?} onto LA {alias_ptr:#x?}");
 }
 
+#[panic_handler]
+fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
+    println!("[PANIC]: {}", info);
+    loop {
+        unsafe {
+            x86::irq::disable();
+            x86::halt();
+        };
+    }
+}
+
 extern "C" {
     fn vmcall(number: u64, rdx: u64, r8: u64, r9: u64) -> u64;
 }

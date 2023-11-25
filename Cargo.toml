@@ -2,12 +2,8 @@
 members = [
     "hypervisor",
     "xtask",
-    "client",
-    # uefi_client must be compiled for EFI_APPLICATION but it will be built as
-    # EFI_RUNTIME_DRIVER because of .cargo/config.toml. To build this project
-    # proper, comment out the line with `rustflags` in the toml file and uncomment
-    # this.
-    #"uefi_client",
+    "os_client",
+    "uefi_client",
 ]
 resolver = "2"
 
@@ -21,6 +17,11 @@ repository = "https://github.com/tandasat/Hello-VT-rp"
 keywords = ["VT-rp", "UEFI", "hypervisor"]
 categories = ["development-tools::testing", "no-std"]
 readme = "./README.md"
+
+[workspace.dependencies]
+bitfield = "0.14"
+uefi = { version = "0.26", default-features = false }
+x86 = "0.52"
 
 [workspace.lints.rust]
 # groups: https://doc.rust-lang.org/rustc/lints/groups.html

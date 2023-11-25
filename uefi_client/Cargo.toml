@@ -1,9 +1,6 @@
-cargo-features = ["per-package-target"]
-
 [package]
 name = "uefi_client"
 description = "Demo client for a UEFI environment"
-forced-target = "x86_64-unknown-uefi"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -20,7 +17,7 @@ test = false
 bench = false
 
 [dependencies]
-bitfield = "0.14"
-uefi = "0.24"
-uefi-services = "0.21"
-x86 = "0.52"
+bitfield.workspace = true
+uefi.workspace = true
+uefi-services = { version = "0.23", default-features = false }
+x86.workspace = true

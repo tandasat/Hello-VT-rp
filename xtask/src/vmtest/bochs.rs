@@ -1,4 +1,4 @@
-use crate::{copy_artifacts_to, DynError, TestVm, UnixCommand};
+use crate::DynError;
 use std::{
     env, fmt,
     io::{BufRead, BufReader},
@@ -8,6 +8,8 @@ use std::{
     thread,
     time::{Duration, SystemTime},
 };
+
+use super::{copy_artifacts_to, TestVm, UnixCommand};
 
 pub(crate) struct Bochs {
     pub(crate) cpu: Cpu,
@@ -40,7 +42,10 @@ impl TestVm for Bochs {
                 .lines()
                 .map_while(std::result::Result::ok)
                 .for_each(|line| {
-                    println!("{:>4}: {line}\r", now.elapsed().unwrap_or_default().as_secs());
+                    println!(
+                        "{:>4}: {line}\r",
+                        now.elapsed().unwrap_or_default().as_secs()
+                    );
                 });
 
             thread::sleep(Duration::from_secs(1));
@@ -49,7 +54,6 @@ impl TestVm for Bochs {
         let cpu_type = self.cpu.to_string().to_lowercase();
         let _unused = thread::spawn(move || {
             // Start Bochs from the "tests" directory in background.
-            static DBG_CMD: &str = "./bochs/dbg_command.txt";
             let bochs = if cfg!(target_os = "windows") {
                 r"C:\class\Bochs\bochs\obj-release\bochs.exe"
             } else {
@@ -57,7 +61,7 @@ impl TestVm for Bochs {
             };
             let bxrc = format!("./bochs/{}_{cpu_type}.bxrc", env::consts::OS);
             let output = Command::new(bochs)
-                .args(["-q", "-unlock", "-rc", DBG_CMD, "-f", &bxrc])
+                .args(["-q", "-unlock", "-f", &bxrc])
                 .current_dir(Path::new("./tests"))
                 .stdout(Stdio::piped())
                 .spawn()

@@ -1,5 +1,5 @@
 [package]
-name = "client"
+name = "os_client"
 description = "Demo client for an OS environment"
 version.workspace = true
 edition.workspace = true

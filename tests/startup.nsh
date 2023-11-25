@@ -1,4 +1,4 @@
-# Switch to the disk with snapshot, patch and corpus files. fs0:, in this example.
+# Switch to the filesystem with vt-rp.efi.
 fs0:
 
 # Run vt-rp.efi.

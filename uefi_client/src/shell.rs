@@ -28,7 +28,7 @@ pub(crate) fn get_args() -> Vec<String> {
 // Gets argc/argv using the given protocol.
 fn get_args_with_protocol<T: ShellProtocol + Protocol>() -> uefi::Result<Vec<String>> {
     // Safety: Code is single threaded.
-    let st = unsafe { system_table().as_ref() };
+    let st = system_table();
     let bs = st.boot_services();
     let shell = unsafe {
         bs.open_protocol::<T>(

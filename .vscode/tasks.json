@@ -3,6 +3,24 @@
     "tasks": [
         {
             "type": "shell",
+            "label": "rust: cargo xtask build",
+            "command": "cargo xtask build",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "type": "shell",
+            "label": "rust: cargo xtask clippy",
+            "command": "cargo xtask clippy",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "type": "shell",
             "label": "rust: cargo xtask bochs-intel",
             "command": "cargo xtask bochs-intel",
             "group": {

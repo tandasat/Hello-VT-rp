@@ -1,9 +1,6 @@
-cargo-features = ["per-package-target"]
-
 [package]
 name = "vt-rp"
 description = "A simple hypervisor demonstrating the use of the Intel VT-rp technology"
-forced-target = "x86_64-unknown-uefi"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -23,18 +20,14 @@ test = false
 bench = false
 
 [dependencies]
-bitfield = "0.14"
-derivative = { version ="2.2", features = ["use_core"]}
+bitfield.workspace = true
+derivative = { version = "2.2", features = ["use_core"] }
 log = "0.4"
-num-derive = { version= "0.4", default-features= false }
-num-traits = { version= "0.2", default-features= false }
+num-derive = { version = "0.4", default-features = false }
+num-traits = { version = "0.2", default-features = false }
 spin = "0.9"
-uefi = "0.25"
-# The hypervisor is a runtime driver but the following features in the uefi-services
-# are boot-time only: the allocator and the panic handler. Neither of those
-# 'actively' causes an issue, so I opted it for the sake of smaller code.
-uefi-services = { version = "0.22", default-features = false, features = ["panic_handler"]}
-x86 = "0.52"
+uefi.workspace = true
+x86.workspace = true
 
 [features]
 default = ["enable_vt_rp"]

@@ -5,10 +5,11 @@
 
 extern crate alloc;
 
+mod allocator;
 mod hypervisor;
 mod intel_vt;
-mod logger;
 mod paging_structures;
+mod serial_logger;
 mod switch_stack;
 mod x86_instructions;
 
@@ -19,15 +20,15 @@ use x86::{cpuid::cpuid, current::paging::BASE_PAGE_SIZE};
 
 use crate::{
     hypervisor::{CPUID_VENDOR_AND_MAX_FUNCTIONS, HLAT_VENDOR_NAME},
-    logger::init_uart_logger,
     switch_stack::virtualize_system,
 };
 
 #[entry]
-fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    init_uart_logger(log::LevelFilter::Debug).unwrap();
-    info!("vt-rp.efi loaded🔥");
-    uefi_services::init(&mut system_table).unwrap();
+fn main(image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
+    serial_logger::init(log::LevelFilter::Debug);
+    info!("Loading vt-rp.efi...");
+
+    allocator::init(&system_table);
 
     if is_hlat_hypervisor_present() {
         error!("The HLAT hypervisor is already present");
@@ -50,7 +51,7 @@ fn main(image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         debug!("Virtualizing the system");
         virtualize_system(&regs, &system_table);
     }
-    info!("The HLAT hypervisor has been installed successfully");
+    info!("The HLAT hypervisor has been installed successfully🔥");
     Status::SUCCESS
 }
 
@@ -96,4 +97,16 @@ struct GuestRegisters {
     rflags: u64,
     rsp: u64,
     rip: u64,
+}
+
+/// Handles panic.
+#[panic_handler]
+fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
+    error!("{info}");
+    loop {
+        unsafe {
+            x86::irq::disable();
+            x86::halt();
+        };
+    }
 }

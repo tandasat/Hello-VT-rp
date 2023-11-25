@@ -1,5 +1,5 @@
 # Bochs Files
-Those files are used to start rhv on Bochs through the `cargo xtask bochs-intel` or `cargo xtask bochs-amd` command. For initial setting up of Bochs, see [BUILDING.md](../../BUILDING.md)
+Those files are used to start rhv on Bochs through the `cargo xtask bochs-intel` or `cargo xtask bochs-amd` command.
 
 
 ## Configuration Files
