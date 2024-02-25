@@ -24,6 +24,12 @@ impl SerialLogger {
     fn lock(&self) -> spin::MutexGuard<'_, Serial> {
         self.port.lock()
     }
+
+    fn apic_id() -> u32 {
+        // See: (AMD) CPUID Fn0000_0001_EBX LocalApicId, LogicalProcessorCount, CLFlush
+        // See: (Intel) Table 3-8. Information Returned by CPUID Instruction
+        x86::cpuid::cpuid!(0x1).ebx >> 24
+    }
 }
 impl log::Log for SerialLogger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
@@ -32,7 +38,13 @@ impl log::Log for SerialLogger {
 
     fn log(&self, record: &log::Record<'_>) {
         if self.enabled(record.metadata()) {
-            let _ = writeln!(self.lock(), "{}: {}", record.level(), record.args());
+            let _ = writeln!(
+                self.lock(),
+                "CPU#{}:{}: {}",
+                Self::apic_id(),
+                record.level(),
+                record.args()
+            );
         }
     }
 

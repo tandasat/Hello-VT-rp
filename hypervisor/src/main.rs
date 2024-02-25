@@ -94,19 +94,15 @@ fn start_hypervisor_on_all_processors(system_table: &SystemTable<Boot>) {
     }
     .unwrap();
 
-    if mp.get_number_of_processors().unwrap().enabled == 1 {
-        start_hypervisor();
-    } else {
-        start_hypervisor();
-        mp.startup_all_aps(
-            true,
-            start_hypervisor_on_ap,
-            core::ptr::null_mut(),
-            None,
-            None,
-        )
-        .unwrap();
-    }
+    start_hypervisor();
+    mp.startup_all_aps(
+        true,
+        start_hypervisor_on_ap,
+        core::ptr::null_mut(),
+        None,
+        None,
+    )
+    .unwrap();
 }
 
 extern "efiapi" fn start_hypervisor_on_ap(_context: *mut c_void) {
